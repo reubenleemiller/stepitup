@@ -28,6 +28,7 @@ exports.handler = async function(event, context) {
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
+      // Defensive: always stringify in case cache is polluted
       let bodyString;
       if (typeof cached === 'string') {
         bodyString = cached;
@@ -44,40 +45,26 @@ exports.handler = async function(event, context) {
       };
     }
   } catch (err) {
+    // Log but don't block function if Redis fails
     console.error('Redis GET error:', err);
   }
 
-  // Cal.com v2 API parameters
-  const url = `https://api.cal.com/v2/slots?username=${USERNAME}` +
+  // Otherwise fetch from Cal.com
+  const url = `https://api.cal.com/v1/slots?usernameList=${USERNAME}` +
     `&eventTypeSlug=${EVENT_TYPE_SLUG}` +
-    `&start=${start}` +
-    `&end=${end}` +
-    `&timeZone=${encodeURIComponent(timeZone)}`;
+    `&startTime=${start}` +
+    `&endTime=${end}` +
+    `&timeZone=${encodeURIComponent(timeZone)}` +
+    `&apiKey=${API_KEY}`;
 
   try {
-    const response = await axios.get(url, {
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'cal-api-version': '2024-09-04'
-      }
-    });
-
-    // Transform v2 API response to v1-like output
-    // v2: { data: { "YYYY-MM-DD": [{start: ...}, ...] }, status: "success" }
-    // v1-like: { slots: { "YYYY-MM-DD": [{time: ...}, ...] } }
-    const slots = {};
-    const data = response.data.data || {};
-    Object.entries(data).forEach(([date, slotArr]) => {
-      slots[date] = slotArr.map(slot => ({
-        time: slot.start
-      }));
-    });
-    const out = { slots };
-
-    const dataString = JSON.stringify(out);
+    const response = await axios.get(url);
+    // Always stringify before caching
+    const dataString = JSON.stringify(response.data);
     try {
       await redis.set(cacheKey, dataString, { ex: CACHE_TTL_S });
     } catch (err) {
+      // Log but don't block function if Redis fails
       console.error('Redis SET error:', err);
     }
     return {
