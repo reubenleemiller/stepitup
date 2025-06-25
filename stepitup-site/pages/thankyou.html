@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" class="preloader-lock">
+<head>
+<script>
+  document.documentElement.classList.add('preloader-lock');
+</script> 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thank You</title>
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body class="locked">
+<div id="site-preloader" class="">
+  <div class="preloader-spinner-wrapper">
+    <div class="custom-spinner">
+      <div></div>
+    </div>
+    <img src="../assets/logo.png" alt="Step it Up Learning Logo" class="preloader-logo" />
+  </div>
+</div> 
+<header class="sticky">
+<a href="../index.html"><img alt="Step it Up Learning Logo" class="logo" src="../assets/logo.png"/></a>
+<button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
+<nav id="nav-menu">
+<ul>
+<li><a href="../index.html">Home</a></li>
+<li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+<li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="contact.html">Contact</a></li>
+</ul>
+</nav>
+</header>
+
+  <main class="content" style="text-align: center;">
+    <h1>Thank you!</h1>
+    <p>Your message has been successfully sent. We will get back to you shortly.</p>
+    <a href="../index.html" class="button">Back to Home</a>
+  </main>
+
+<footer class="footer-flex">
+<div class="footer-links">
+<p>© 2025 Step it Up Learning</p>
+<a href="../index.html">Home</a>
+<a href="about.html">About</a>
+<a href="terms-of-service.html">Terms Of Service</a>
+<a href="privacy-policy.html">Privacy Policy</a>
+<a href="refund-policy.html">Refund Policy</a>
+<a href="contact.html">Contact</a>
+<div class="footer-payment-icons">
+  <i class="fab fa-cc-visa"></i>
+  <i class="fab fa-cc-mastercard"></i>
+  <i class="fab fa-cc-stripe"></i>
+</div>
+</div>
+<div class="footer-links">
+<p>Book and Pay for Sessions or Packages</p>
+<a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
+<a href="https://packages.stepituplearning.ca/">Packages</a>
+</div>
+<div class="footer-links">
+<p>Contact Info</p>
+<a href="mailto:info@stepituplearning.ca"><i class="fa-solid fa-envelope"></i>&nbsp;info@stepituplearning.ca</a>
+<a href="tel:4035984840"><i class="fa-solid fa-phone"></i>&nbsp;+1 (403) 598-4840</a>
+</div>
+<div class="footer-contact-form">
+    <h3>Send Us a Message</h3>
+    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="contact" />
+      <input type="hidden" name="bot-field" />
+
+      <input name="name" placeholder="Your Name" required type="text" />
+      <input name="email" placeholder="Your Email" required type="email" />
+      <textarea name="message" placeholder="Your Message" required></textarea>
+
+      <button type="submit">Send Message</button>
+    </form>
+</div>
+</footer>
+<script src="../scripts/preloader.js"></script>
+<script src="../scripts/calcom-60min.js"></script>
+<script src="../scripts/contact-form.js"></script>
+  <script>
+  function toggleMenu() {
+    const nav = document.getElementById("nav-menu");
+    nav.classList.toggle("open");
+  }
+</script>
+</body>
+</html>

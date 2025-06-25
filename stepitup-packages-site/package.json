@@ -1,0 +1,25 @@
+{
+  "name": "rmtutoring-site",
+  "version": "1.0.0",
+  "description": "RM Tutoring Packages Checkout Site",
+  "main": "index.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'No build step required'",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "author": "Reuben Miller",
+  "license": "ISC",
+  "dependencies": {
+    "stripe": "^18.2.1",
+    "node-fetch": "^3.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reubenleemiller/rmtutoring-packages-site.git"
+  },
+  "bugs": {
+    "url": "https://github.com/reubenleemiller/rmtutoring-packages-site/issues"
+  },
+  "homepage": "https://packages.rmtutoringservices.com"
+}

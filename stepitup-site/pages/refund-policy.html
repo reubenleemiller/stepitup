@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+
+<html lang="en" class="preloader-lock">
+<head>
+<script>
+  document.documentElement.classList.add('preloader-lock');
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>About</title>
+<link href="../style.css" rel="stylesheet"/>
+</head>
+<body class="locked">
+<div id="site-preloader" class="">
+  <div class="preloader-spinner-wrapper">
+    <div class="custom-spinner">
+      <div></div>
+    </div>
+    <img src="../assets/logo.png" alt="Step it Up Learning Logo" class="preloader-logo" />
+  </div>
+</div>
+<header class="sticky">
+<a href="../index.html"><img alt="Step it Up Learning Logo" class="logo" src="../assets/logo.png"/></a>
+<button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
+<nav id="nav-menu">
+<ul>
+<li><a href="../index.html">Home</a></li>
+<li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+<li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="contact.html">Contact</a></li>
+</ul>
+</nav>
+</header>
+<main class="content">
+<section class="refund-policy">
+  <h2>Refund Policy</h2>
+  <p>At Step it Up Learning, we are committed to providing high-quality, personalized tutoring that supports your academic success. We understand that sometimes circumstances change, and we aim to handle refund requests fairly and transparently.</p>
+
+  <h3>1. Session Cancellations and Rescheduling</h3>
+  <ul>
+    <li><strong>At least 24 hours notice</strong> is required to cancel or reschedule a session without penalty.</li>
+    <li>If you cancel or reschedule <strong>less than 24 hours</strong> before the session, the full session fee will still apply, and <strong>no refund will be issued</strong>.</li>
+    <li>Sessions missed without notice (“no-shows”) are <strong>non-refundable</strong>.</li>
+  </ul>
+
+  <h3>2. Refunds for Prepaid Packages</h3>
+  <ul>
+    <li>Prepaid tutoring packages are refundable <strong>within 7 days of purchase</strong>, provided that no sessions in the package have been used.</li>
+    <li>If one or more sessions have been used, a <strong>partial refund</strong> may be issued for the unused sessions, minus a 10% administrative fee.</li>
+  </ul>
+
+  <h3>3. Technical Issues or Tutor Absence</h3>
+  <p>If a session is interrupted or canceled due to <strong>technical issues</strong> on our end or <strong>tutor unavailability</strong>, we will reschedule the session at no extra cost or offer a full refund.</p>
+
+  <h3>4. Satisfaction Guarantee</h3>
+  <p>If you are unsatisfied with your <strong>first session</strong>, please contact us within 24 hours. We may offer a full refund or a free replacement session on a case-by-case basis.</p>
+
+  <h3>5. How to Request a Refund</h3>
+  <p>
+    To request a refund, please email 
+    <a href="mailto:info@stepituplearning.ca">info@stepituplearning.ca</a> 
+    with the following details:
+  </p>
+  <ul>
+    <li>Your full name</li>
+    <li>Date of the session or purchase</li>
+    <li>Reason for your refund request</li>
+  </ul>
+  <p>Refunds will be processed to the original payment method within <strong>5–10 business days</strong> if approved.</p>
+</section>
+</main>
+<footer class="footer-flex">
+<div class="footer-links">
+<p>© 2025 Step it Up Learning</p>
+<a href="../index.html">Home</a>
+<a href="about.html">About</a>
+<a href="terms-of-service.html">Terms Of Service</a>
+<a href="privacy-policy.html">Privacy Policy</a>
+<a href="refund-policy.html">Refund Policy</a>
+<a href="contact.html">Contact</a>
+<div class="footer-payment-icons">
+  <i class="fab fa-cc-visa"></i>
+  <i class="fab fa-cc-mastercard"></i>
+  <i class="fab fa-cc-stripe"></i>
+</div>
+</div>
+<div class="footer-links">
+<p>Book and Pay for Sessions or Packages</p>
+<a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
+<a href="https://packages.stepituplearning.ca/">Packages</a>
+</div>
+<div class="footer-links">
+<p>Contact Info</p>
+<a href="mailto:info@stepituplearning.ca"><i class="fa-solid fa-envelope"></i>&nbsp;info@stepituplearning.ca</a>
+<a href="tel:4035984840"><i class="fa-solid fa-phone"></i>&nbsp;+1 (403) 598-4840</a>
+</div>
+<div class="footer-contact-form">
+    <h3>Send Us a Message</h3>
+    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="contact" />
+      <input type="hidden" name="bot-field" />
+
+      <input name="name" placeholder="Your Name" required type="text" />
+      <input name="email" placeholder="Your Email" required type="email" />
+      <textarea name="message" placeholder="Your Message" required></textarea>
+
+      <button type="submit">Send Message</button>
+    </form>
+</div>
+</footer>
+<script src="../scripts/preloader.js"></script>
+<script src="../scripts/calcom-60min.js"></script>
+<script src="../scripts/contact-form.js"></script>
+<script>
+  function toggleMenu() {
+    const nav = document.getElementById("nav-menu");
+    nav.classList.toggle("open");
+  }
+</script>
+</body>
+</html>
