@@ -34,17 +34,28 @@
   </header>
 
 <main class="content" style="text-align: center;">
-    <h2>Complete Your One-Time Payment</h2>
-<form id="payment-form">
-  <input type="text" id="first-name" placeholder="First Name" required />
-  <input type="text" id="last-name" placeholder="Last Name" required />
-  <input type="email" id="email" placeholder="Email Address" required />
+  <h2>Complete Your One-Time Payment</h2>
+  <div id="package-price">
+      Package Price: <span id="price-display">$—</span>
+    </div>
+  <form id="payment-form">
+    <input type="text" id="first-name" placeholder="First Name" required />
+    <input type="text" id="last-name" placeholder="Last Name" required />
+    <input type="email" id="email" placeholder="Email Address" required />
 
-  <div id="payment-element"></div>
+<div id="coupon-section-wrapper">
+  <div id="coupon-section">
+    <input type="text" id="coupon-code" placeholder="Coupon Code" />
+    <button type="button" id="apply-coupon">Apply</button>
+  </div>
+</div>
+<div id="coupon-message"></div>
 
-  <button type="submit" id="submit">Pay Now</button>
-  <div id="error-message"></div>
-</form>
+    <div id="payment-element"></div>
+
+    <button type="submit" id="submit">Pay Now</button>
+    <div id="error-message"></div>
+  </form>
 </main>
 
 <footer class="footer-flex">
@@ -63,8 +74,9 @@
 </div>
 </div>
 <div class="footer-links">
-<p>Sessions, Packages and Subscriptions</p>
+<p>Sessions and Packages</p>
 <a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
+<a data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Meet &amp; Greet</a>
 <a href="https://packages.stepituplearning.ca/">Packages</a>
 </div>
 <div class="footer-links">
@@ -86,8 +98,10 @@
     </form>
 </div>
 </footer>
+<script src="../scripts/coupon-spinner.js"></script>
 <script src="../scripts/preloader.js"></script>
 <script src="../scripts/calcom-60min.js"></script>
+<script src="../scripts/calcom-meet-and-greet.js"></script>
 <script src="../scripts/contact-form.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script src="../scripts/checkout.js"></script>

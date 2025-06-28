@@ -155,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (subscribe && subscriptionLinks[pkg]) {
         window.location.href = subscriptionLinks[pkg];
       } else {
-        window.location.href = `https://packages.stepituplearning.ca/pages/checkout.html?package=${pkg}`;
+        window.location.href = `./pages/checkout.html?package=${pkg}`;
       }
     });
   }

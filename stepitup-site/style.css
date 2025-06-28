@@ -130,7 +130,7 @@ input, textarea {
 }
 
 input:focus, textarea:focus {
-  border-color: #2f1444;
+  border-color: #2c77cc;
   box-shadow: 0 0 5px rgba(47, 20, 68, 0.3);
   outline: none;
 }
@@ -917,3 +917,34 @@ footer {
   color: var(--hover-bg);
   transform: scale(1.05);
 }
+.tiny-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: tiny-spin 0.7s linear infinite;
+  pointer-events: none;
+  margin-left: 0.5rem; /* add some space from text */
+  vertical-align: middle;
+}
+
+@keyframes tiny-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.success-checkmark {
+  font-size: 1.2rem;
+  color: white;
+  margin-left: 0.4rem;
+}
+
+#request-access-btn.success {
+  background-color: #28a745; /* Green success color */
+  pointer-events: none;
+}
+

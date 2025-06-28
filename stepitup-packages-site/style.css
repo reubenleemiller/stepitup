@@ -1032,3 +1032,152 @@ footer {
     padding: 0.48rem 0.7rem;
   }
 }
+#package-price {
+    margin-bottom: 1rem;
+    font-weight: bold;
+    font-size: 2rem;
+  }
+
+  #coupon-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    position: relative; /* for spinner positioning */
+  }
+  
+  input#coupon-code {
+  padding: 0.75rem;
+  }
+/* Make input take all available space but keep min width */
+#coupon-code {
+  flex-grow: 1;
+  min-width: 180px; /* prevents it getting too narrow */
+  padding: 0.75rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+  /* Keep button fixed width but aligned nicely */
+#apply-coupon {
+  width: 140px;
+  min-height: 44px;
+  padding: 0.75rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+  #apply-coupon.applied {
+  background-color: #28a745 !important; /* green */
+  color: white;
+  transition: background-color 0.3s ease;
+  pointer-events: none; /* prevent further clicks */
+      /* ✅ Add these */
+  width: 120px;        /* Set a consistent width */
+  min-height: 44px;    /* Match or slightly exceed content height */
+  box-sizing: border-box; /* Ensure padding doesn't overflow */
+  text-align: center;  /* Keep text centered if it reappears */
+}
+
+#apply-coupon.applied::before {
+  content: "✓ ";
+  font-weight: bold;
+      /* ✅ Add these */
+  width: 120px;        /* Set a consistent width */
+  min-height: 44px;    /* Match or slightly exceed content height */
+  box-sizing: border-box; /* Ensure padding doesn't overflow */
+  text-align: center;  /* Keep text centered if it reappears */
+}
+
+
+  #apply-coupon:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  #coupon-message {
+  flex-basis: 100%;  /* full width below the input + button */
+  margin-top: 0.5rem;
+  color: green;
+  min-height: 1.2rem;
+  font-size: 0.9rem;
+}
+
+  #payment-element {
+    margin-bottom: 1rem;
+  }
+
+  #submit {
+    padding: 0.6rem 1.2rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+
+  #submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #error-message {
+    color: red;
+    margin-top: 1rem;
+    min-height: 1.2rem;
+  }
+
+  /* === Tiny spinner styles scoped and conflict-free === */
+
+  .tiny-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: tiny-spin 0.7s linear infinite;
+  pointer-events: none;
+  /* Position is set by JS */
+}
+
+@keyframes tiny-spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+span#price-display {
+font-weight: strong;
+font-size: 24px;
+color: #2c77cc;
+}
+#coupon-section-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 600px) {
+  #apply-coupon {
+    min-width: 100px; /* adjust if needed */
+    padding: 0.75rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 480px) {
+  #coupon-section-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  #coupon-code {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  #apply-coupon {
+    width: 100%;
+  }
+}
+
