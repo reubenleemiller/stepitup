@@ -37,7 +37,7 @@ exports.handler = async (event) => {
     await resend.emails.send({
       from: "Step it Up Learning <info@stepituplearning.ca>",
       to: email,
-      subject: "Book Your Meet & Greet",
+      subject: "Discount Requested: Book Your Meet & Greet to Proceed",
       html: `
         <p>Hi ${firstName},</p>
         <p>Thanks for your interest in Step it Up Learning!</p>
