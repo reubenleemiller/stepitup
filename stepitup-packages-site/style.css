@@ -164,13 +164,6 @@ footer {
   margin-top: 3rem;
 }
 
-.footer-links {
-  flex: 1 1 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-}
-
 .footer-links a,
 .footer-links a:link,
 .footer-links a:visited,
@@ -340,6 +333,8 @@ footer {
   align-items: flex-start;
   gap: 0.5em;
   cursor: pointer;
+  max-height: fit-content;
+  max-width: fit-content;
 }
 
 @media (max-width: 768px) {
@@ -362,7 +357,7 @@ footer {
 }
 @media (min-width: 769px) {
   .footer-contact-form {
-    margin-right: 80px; /* or 120px depending on how far you want it */
+    margin-right: 20px; /* or 120px depending on how far you want it */
   }
 }
 .footer-payment-icons {
