@@ -259,7 +259,7 @@ footer {
   background-color: #2c77cc;
   color: white;
 }
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .hamburger {
     display: block;
   }
@@ -942,4 +942,77 @@ footer {
   background-color: #28a745; /* Green success color */
   pointer-events: none;
 }
+#newsletter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0 auto;
+  padding: 2.5rem 2rem;
+}
 
+#newsletter-form h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+#newsletter-form input[type="email"] {
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #cdd0d4;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+#newsletter-form input[type="email"]:focus {
+  border-color: #5b9cf4;
+  outline: none;
+}
+
+.download-btn {
+  margin-top: 1rem;
+  animation: popIn 0.5s;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Replace .tiny-spinner for newsletter with .newsletter-spinner */
+.newsletter-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: newsletter-spin 0.7s linear infinite;
+  pointer-events: none;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  display: inline-block;
+}
+@keyframes newsletter-spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 500px) {
+  #newsletter-form {
+    padding: 1.2rem 0.5rem;
+    font-size: 1rem;
+  }
+}
