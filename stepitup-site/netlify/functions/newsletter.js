@@ -85,6 +85,8 @@ exports.handler = async (event) => {
       <div style="font-family: Arial, sans-serif; color: #222; max-width: 700px; margin: auto;">
         <h2 style="color: #2B76CC;">Welcome to Step it Up Learning!</h2>
         <p>Thank you for signing up! Your Summer Reading Bingo sheet is attached as a PDF.</p>
+        <p>Don't forget to email us pictures of the books you've read when you complete a bingo, so you can be entered to win a $10 Indigo Electronic Gift Card</p>
+        <p>If you're interested in learning more about our other services please read below.</p>
         
         <h3 style="${sectionTitle}">Step it up Tutoring Packages for Kinder–Grade 6</h3>
         <ul>
