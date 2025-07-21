@@ -1491,3 +1491,22 @@ input[type="file"]::-webkit-file-upload-button:hover {
     box-sizing: border-box;
   }
 }
+.spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: #fff;    /* spinner color */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner.active {
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
