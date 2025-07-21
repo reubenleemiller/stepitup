@@ -1122,6 +1122,9 @@ footer {
   border: 1px solid #ddd;
   border-radius: 5px;
 }
+textarea[name="review"] {
+min-height: 140px;
+}
 
 .review-form input[type="file"] {
   padding: 8px;
@@ -1255,5 +1258,237 @@ footer {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+  #avg-stars {
+    font-size: 2.6rem;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #avg-stars .fa-star,
+  #avg-stars .fa-star-half-stroke,
+  #avg-stars .fa-regular.fa-star {
+    margin: 0 0.13em;
+    color: #FFD700;
+    filter: drop-shadow(0 1px 2px #eee);
+    transition: color 0.2s;
+  }
+ input[type="file"]::file-selector-button {
+  content: "Upload Photo";
+  font-family: inherit;
+  color: #2c77cc;
+  background: #fff;
+  border: 2px solid #2c77cc;
+  border-radius: 5px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+input[type="file"]::file-selector-button:hover {
+  background: #2c77cc;
+  color: #fff;
+}
+/* For Safari and old Chrome */
+input[type="file"]::-webkit-file-upload-button {
+  content: "Upload Photo";
+  font-family: inherit;
+  color: #2c77cc;
+  background: #fff;
+  border: 2px solid #2c77cc;
+  border-radius: 5px;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: background 0.3s, color 0.3s;
+}
+input[type="file"]::-webkit-file-upload-button:hover {
+  background: #2c77cc;
+  color: #fff;
+}
+.paypal-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  min-height: 60px;
+}
+.paypal-spinner .circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #2c77cc;
+  animation: paypal-spin 0.7s linear infinite;
+  margin: 0 auto;
+}
+@keyframes paypal-spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
+#featured-reviews-section {
+  max-width: 900px;
+  margin: 3rem auto;
+  text-align: center;
+  background: #fff;
+  padding: 2rem 0;
+  position: relative;
+}
+
+#featured-carousel {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  padding: 0 !important;
+}
+
+.featured-reviews-carousel .swiper-wrapper {
+  box-sizing: border-box;
+}
+
+.featured-reviews-carousel .swiper-slide {
+  margin: 0 !important; /* NO margin between slides */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.featured-reviews-carousel .review-card {
+  width: 100%;
+  max-width: 340px;
+  min-width: 220px;
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Arrows */
+.swiper-button-prev,
+.swiper-button-next {
+  background: #2c77cc;
+  color: #fff !important;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 4px 12px rgba(44,119,204,0.08);
+  transition: background 0.3s;
+  opacity: 0.9;
+  z-index: 10;
+}
+.swiper-button-prev {
+  left: 20px !important;
+}
+.swiper-button-next {
+  right: 20px !important;
+}
+.swiper-button-prev:hover,
+.swiper-button-next:hover {
+  background: #4d8fe0;
+  color: #fff !important;
+}
+.swiper-button-prev:after,
+.swiper-button-next:after {
+  font-size: 1.5rem;
+}
+
+/* Dots */
+.swiper-pagination {
+  margin-top: 36px !important;
+  position: relative;
+  bottom: auto !important;
+}
+.swiper-pagination-bullet {
+  background: #2c77cc;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.swiper-pagination-bullet-active {
+  background: #2c77cc;
+  opacity: 1;
+}
+
+/* Gold stars */
+.featured-reviews-carousel .review-stars,
+.featured-reviews-carousel .review-stars i,
+.featured-reviews-carousel .review-stars .fa-star,
+.featured-reviews-carousel .review-stars .fa-star-half-stroke,
+.featured-reviews-carousel .review-stars .fa-regular.fa-star {
+  color: #FFD700 !important;
+}
+
+/* Prevent review text overflow */
+.featured-reviews-carousel .review-text {
+  font-size: 0.98em;
+  color: #333;
+  position: relative;
+  padding: 40px 10px 30px 10px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  max-width: 92%;
+  overflow: hidden;
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  #featured-carousel {
+    padding: 0 !important;
+  }
+  .swiper-button-prev,
+  .swiper-button-next {
+    width: 32px;
+    height: 32px;
+    left: 4px !important;
+    right: 4px !important;
+    top: 92%;
+  }
+  .swiper-pagination {
+    margin-top: 22px !important;
+  }
+  .featured-reviews-carousel .swiper-slide {
+    margin: 0 !important;
+  }
+  .featured-reviews-carousel .review-card {
+    min-width: 60vw;
+    max-width: 95vw;
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+@media (max-width: 700px) {
+  /* Hide navigation arrows */
+  .swiper-button-prev,
+  .swiper-button-next {
+    display: none !important;
+  }
+
+  /* Add extra margin to the section/container */
+  #featured-reviews-section {
+    margin: 1.5rem 0.5rem !important;
+    padding: 1.5rem 0.5rem !important;
+    box-sizing: border-box;
+  }
+
+  /* Ensure one centered card with uniform margin inside container */
+  .featured-reviews-carousel .swiper-slide {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 !important;         /* No extra margin between slides */
+    width: 100% !important;
+  }
+  .featured-reviews-carousel .review-card {
+    max-width: 95vw;
+    width: 100%;
+    margin: 24px;                /* Uniform margin on all sides */
+    box-sizing: border-box;
   }
 }

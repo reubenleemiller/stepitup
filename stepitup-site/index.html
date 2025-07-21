@@ -17,6 +17,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Index</title>
@@ -40,6 +42,7 @@
 <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
 <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
 <li><a href="pages/extras.html">Extras</a></li>
+<li><a href="pages/reviews.html">Reviews</a></li>
 <li><a href="pages/about.html">About</a></li>
 <li><a href="pages/contact.html">Contact</a></li>
 </ul>
@@ -271,6 +274,19 @@
   <button id="calendar-refresh" class="button">Refresh Availability</button>
 </div>
 <script src="scripts/renderCalendar.js"></script>
+<div id="featured-reviews-section">
+  <h1 style="color: #2c77cc;">What Our Customers Say</h1>
+  <div class="swiper featured-reviews-carousel" id="featured-carousel">
+    <div class="swiper-wrapper">
+      <!-- Slides will be inserted here by JS -->
+    </div>
+    <!-- Optional: Pagination & navigation -->
+    <div class="swiper-pagination"></div>
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
+  </div>
+</div>
+<script src="scripts/featured-reviews.js"></script>
     <div class="faq-section">
   <h2>Frequently Asked Questions</h2>
   <div class="faq-container">
@@ -407,6 +423,7 @@
 <a href="pages/privacy-policy.html">Privacy Policy</a>
 <a href="pages/refund-policy.html">Refund Policy</a>
 <a href="pages/extras.html">Extras</a>
+<a href="pages/reviews.html">Reviews</a>
 <a href="pages/contact.html">Contact</a>
 <div class="footer-payment-icons">
   <i class="fab fa-cc-visa"></i>

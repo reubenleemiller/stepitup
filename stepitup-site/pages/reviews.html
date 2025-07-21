@@ -38,6 +38,7 @@
 <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
 <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
 <li><a href="extras.html">Extras</a></li>
+<li><a href="reviews.html">Reviews</a></li>
 <li><a href="about.html">About</a></li>
 <li><a href="contact.html">Contact</a></li>
 </ul>
@@ -45,11 +46,10 @@
 </header>
 <main class="content">
   <div class="reviews-container">
-    <h2>Customer Reviews</h2>
+    <h1 style="display:flex; justify-content:center; align-items:center; color: #2c77cc;">Customer Reviews</h1>
     <div class="summary" id="summary">Loading summary...</div>
-
     <form class="review-form" id="review-form">
-      <h3>Leave a Review</h3>
+      <h2>Leave a Review</h2>
       <input type="text" name="name" placeholder="Your Name" required />
       <div class="star-rating" id="star-rating">
         <i class="fa-solid fa-star" data-value="1"></i>
@@ -59,14 +59,17 @@
         <i class="fa-solid fa-star" data-value="5"></i>
       </div>
       <textarea name="review" placeholder="Your review" required></textarea>
+      <p>Please upload an image</p>
       <input type="file" name="image" accept="image/*" required />
       <button type="submit">
         <span>Submit Review</span>
         <div class="reviews-tiny-spinner"></div>
       </button>
     </form>
-
     <div class="reviews-grid" id="reviews-grid"></div>
+        <div id="reviews-spinner" class="paypal-spinner" style="display:none; justify-content:center; margin-bottom:20px;">
+  <div class="circle"></div>
+</div>
     <div class="pagination">
       <button id="prev-page">Previous</button>
       <span id="page-info"></span>
@@ -85,6 +88,7 @@
 <a href="privacy-policy.html">Privacy Policy</a>
 <a href="refund-policy.html">Refund Policy</a>
 <a href="extras.html">Extras</a>
+<a href="reviews.html">Reviews</a>
 <a href="contact.html">Contact</a>
 <div class="footer-payment-icons">
   <i class="fab fa-cc-visa"></i>
