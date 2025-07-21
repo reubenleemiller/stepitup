@@ -49,7 +49,7 @@ form.addEventListener("submit", async (e) => {
 
     if (result.success) {
       // Redirect; no need to hide spinner because page unloads
-      window.location.href = "/pages/thankyou.html";
+      window.location.href = "https://stepituplearning.ca/pages/thankyou.html";
     } else {
       alert("❌ Error sending ticket.");
       hideSpinner();
