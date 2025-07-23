@@ -5,3 +5,7 @@
 
 [functions]
   directory = "netlify/functions"
+
+[[scheduled]]
+  function = "ping-supabase"
+  cron = "0 8 1,7,13,19,25 * *"
