@@ -102,7 +102,10 @@ async function loadReviews(page = 1) {
     card.className = 'review-card';
     card.innerHTML = `
       <img src="${r.image_url}" alt="${r.name}" />
-      <div class="review-name">${r.name}</div>
+      <div class="review-name">
+        ${r.name}
+        ${r.verified ? '<i class="bi bi-patch-check-fill" style="color:#6CCE35; font-size:1.2rem;" title="Verified Reviewer"></i>' : ''}
+      </div>      
       <div class="review-rating">${'★'.repeat(r.rating)}</div>
       <div class="review-text">
         <div class="review-quote-top"><i class="fa-solid fa-quote-left"></i></div>
@@ -135,8 +138,18 @@ reviewForm.addEventListener('submit', async (e) => {
     return;
   }
 
+  // Enforce at least email or phone
+  const email = reviewForm.querySelector('input[name="email"]') ? reviewForm.querySelector('input[name="email"]').value.trim() : "";
+  const phone = reviewForm.querySelector('input[name="phone"]') ? reviewForm.querySelector('input[name="phone"]').value.trim() : "";
+  if (!email && !phone) {
+    alert('Please provide at least an email address or a phone number.');
+    return;
+  }
+
   const formData = new FormData(reviewForm);
   formData.append('rating', selectedRating);
+  formData.set('email', email);
+  formData.set('phone', phone);
 
   submitBtn.classList.add('loading');
 

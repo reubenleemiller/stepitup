@@ -20,6 +20,13 @@ function renderStars(rating) {
   return `<div class="review-stars">${stars}</div>`;
 }
 
+// -- ADD Helper for verified icon
+function renderVerifiedIcon(verified) {
+  return verified
+    ? `<i class="bi bi-patch-check-fill" style="color:#6CCE35; font-size:1.2rem;" title="Verified Reviewer"></i>`
+    : '';
+}
+
 async function renderFeaturedCarousel() {
   const reviews = await loadFeaturedReviews();
   const carouselWrapper = document.querySelector('#featured-carousel .swiper-wrapper');
@@ -37,7 +44,10 @@ async function renderFeaturedCarousel() {
     slide.innerHTML = `
       <div class="review-card">
         <img src="${review.image_url || 'https://via.placeholder.com/80'}" alt="${review.name || 'Reviewer'}" class="review-avatar" />
-        <div class="review-name">${review.name || 'Anonymous'}</div>
+        <div class="review-name">
+          ${review.name || 'Anonymous'}
+          ${renderVerifiedIcon(review.verified)}
+        </div>
         ${renderStars(review.rating)}
         <div class="review-text">
           <div class="review-quote-top"><i class="fa-solid fa-quote-left"></i></div>

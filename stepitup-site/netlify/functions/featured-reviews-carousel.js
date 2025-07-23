@@ -14,11 +14,12 @@ exports.handler = async function(event, context) {
     };
   }
 
-  // Fetch featured reviews
+  // Fetch featured reviews (optionally add .eq('verified', true) if you want only verified ones)
   const { data, error } = await supabase
     .from("reviews")
     .select("*")
     .eq("featured", true)
+    .eq("verified", true)
     .order("created_at", { ascending: false })
     .limit(10);
 

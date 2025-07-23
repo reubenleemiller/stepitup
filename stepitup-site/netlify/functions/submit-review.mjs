@@ -63,12 +63,19 @@ export const handler = async (event) => {
       stream.pipe(bb);
     });
 
-    const { name, review, rating, image } = formData;
+    // Accept new fields for email and phone
+    const { name, review, rating, image, email, phone } = formData;
     if (!name || !review || !rating || !image) {
       console.error('Missing fields:', { name, review, rating, image });
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Missing required fields' }),
+      };
+    }
+    if (!email && !phone) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Please provide at least an email or phone' }),
       };
     }
 
@@ -103,7 +110,7 @@ export const handler = async (event) => {
     const publicUrl = publicUrlData.publicUrl;
     console.log('Public URL:', publicUrl);
 
-    // Insert review into DB
+    // Insert review into DB with new fields
     const { error: insertError } = await supabase
       .from('reviews')
       .insert({
@@ -111,6 +118,9 @@ export const handler = async (event) => {
         review,
         rating: Number(rating),
         image_url: publicUrl,
+        email: email || null,
+        phone: phone || null,
+        verified: false, // all new reviews are not verified by default
         created_at: new Date().toISOString(),
       });
 
