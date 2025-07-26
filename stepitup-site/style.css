@@ -1117,7 +1117,6 @@ footer {
 .review-form textarea {
   width: 100%;
   padding: 10px;
-  margin-bottom: 10px;
   border: 1px solid #ddd;
   border-radius: 5px;
 }
@@ -1509,4 +1508,59 @@ input[type="file"]::-webkit-file-upload-button:hover {
   to {
     transform: rotate(360deg);
   }
+}
+.input-icon-wrapper {
+  position: relative;
+  width: 100%;
+  display: block;
+}
+
+/* Absolutely match input height and remove vertical padding for true centering */
+.input-icon-wrapper input[type="email"],
+.input-icon-wrapper input[type="tel"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 2.5em !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 1em;
+  height: 44px; /* match your input's height */
+  line-height: 44px;
+}
+
+/* Icon wrapper fills input height and uses flex for centering */
+.input-icon-wrapper span[id$="input-icon"] {
+  position: absolute;
+  top: 0;
+  right: 0.8em;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s cubic-bezier(.5,0,.1,1), color 0.2s;
+  z-index: 2;
+}
+
+/* FA icon: block, no baseline, font-size as you like */
+.input-icon-wrapper span[id$="input-icon"] i.fa-solid {
+  display: block;
+  font-size: 1.3em;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  height: 1em;
+  width: 1em;
+}
+.inline-links {
+  color: #2c77cc;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.inline-links:hover {
+  color: var(--hover-bg);
+  transform: scale(1.05);
 }
