@@ -112,5 +112,58 @@
     nav.classList.toggle("open");
   }
 </script>
+<!-- Cookie Consent Popup -->
+<div id="cookie-consent-banner" aria-live="polite">
+  <div class="cookie-consent-popup" role="dialog" aria-modal="true" aria-labelledby="cookie-title">
+    <h3 id="cookie-title">Cookies & Privacy</h3>
+    <p>
+      We use cookies to enhance your experience.
+      Read our <a href="https://www.stepituplearning.ca/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and
+      <a href="https://www.stepituplearning.ca/pages/cookie-policy" target="_blank" rel="noopener">Cookie Policy</a>.
+    </p>
+    <div class="cookie-actions">
+      <button id="cookie-accept">Accept</button>
+      <button id="cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days*24*60*60*1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+  }
+
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i=0;i < ca.length;i++) {
+      let c = ca[i];
+      while (c.charAt(0)==' ') c = c.substring(1,c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+  }
+
+  window.addEventListener('DOMContentLoaded', function() {
+    const banner = document.getElementById('cookie-consent-banner');
+    if (!getCookie('cookie_consent')) {
+      banner.classList.add('show');
+    }
+    document.getElementById('cookie-accept').onclick = function() {
+      setCookie('cookie_consent', 'accepted', 365);
+      banner.classList.remove('show');
+    };
+    document.getElementById('cookie-decline').onclick = function() {
+      setCookie('cookie_consent', 'declined', 365);
+      banner.classList.remove('show');
+    };
+  });
+</script>
 </body>
 </html>

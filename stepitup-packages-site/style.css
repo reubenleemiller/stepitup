@@ -1194,3 +1194,107 @@ color: #2c77cc;
     transform: rotate(360deg);
   }
 }
+#cookie-consent-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  pointer-events: none;
+  background: transparent;
+  transition: opacity 0.4s ease-in-out;
+  opacity: 0;
+}
+
+#cookie-consent-banner.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cookie-consent-popup {
+  background: #fff;
+  border: 4px solid #2c77cc;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(44,119,204,0.16);
+  max-width: 680px;
+  width: 96vw;
+  min-width: 320px;
+  padding: 1.5em 2em 1.2em 2em;
+  text-align: center;
+  transition:
+    transform 0.4s cubic-bezier(0.4,0,0.2,1),
+    opacity 0.4s ease-in-out;
+  opacity: 0;
+  transform: translateY(40px) scale(0.98);
+  outline: none;
+  margin: 1rem auto;
+}
+
+#cookie-consent-banner.show .cookie-consent-popup {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.cookie-consent-popup h3 {
+  margin-top: 0;
+  color: #2c77cc;
+  font-size: 1.2em;
+}
+
+.cookie-consent-popup p {
+  margin: 0.6em 0 0.8em 0;
+  color: #222;
+}
+
+.cookie-consent-popup a {
+  color: #2c77cc;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.cookie-consent-popup a:hover,
+.cookie-consent-popup a:focus {
+  color: #174c8a;
+}
+
+.cookie-actions {
+  margin-top: 1em;
+  display: flex;
+  justify-content: center;
+  gap: 1em;
+  flex-wrap: wrap;
+}
+
+.cookie-actions button {
+  padding: 0.5em 2em;
+  border: none;
+  border-radius: 4px;
+  background: #2c77cc;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(44,119,204,0.10);
+}
+.cookie-actions button:hover,
+.cookie-actions button:focus {
+  background: #174c8a;
+  transform: scale(1.07);
+  box-shadow: 0 4px 12px rgba(44,119,204,0.18);
+  outline: none;
+}
+
+/* Responsive tweaks */
+@media (max-width: 500px) {
+  .cookie-consent-popup {
+    padding: 1em 0.5em;
+    font-size: 0.98em;
+  }
+  .cookie-actions button {
+    padding: 0.5em 1em;
+    font-size: 0.97em;
+  }
+}
