@@ -23,7 +23,10 @@ export async function handler(event) {
     return { statusCode: 400, headers, body: 'Invalid JSON' };
   }
 
+  // Cal.com payload may be wrapped in payload key or sent raw
   const payload = data.payload || data;
+
+  // Extract relevant fields, handling possible naming differences
   const bookingId = payload.bookingId || payload.id;
   const eventId = payload.eventTypeId || payload.event_type_id;
   const startTime = payload.startTime || payload.start_time;
@@ -62,11 +65,8 @@ export async function handler(event) {
     if (bookingError) throw bookingError;
 
     if (existingBooking) {
-      // Return last6 as it exists right now for the frontend
-      const sessionTimes = existingGroup?.session_start_times || [];
-      sessionTimes.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-      const last6 = sessionTimes.slice(-6);
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, duplicateBooking: true, last6 }) };
+      // Duplicate booking, no email sent
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, duplicateBooking: true }) };
     }
 
     // Insert new booking id for tracking
@@ -77,6 +77,7 @@ export async function handler(event) {
     if (insertBookingError) throw insertBookingError;
 
     // Maintain session times array with booking timestamps
+    // If existing group: update array, else create new group
     let sessionTimes = existingGroup?.session_start_times || [];
 
     // Add current booking time with timestamp
@@ -84,8 +85,9 @@ export async function handler(event) {
       sessionTimes.push({ start_time: startTime, booked_at: new Date().toISOString() });
     }
 
-    // Sort sessionTimes by start_time ascending (for DB consistency)
+    // Sort sessionTimes by start_time ascending (optional, for DB consistency)
     sessionTimes.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
     const bookingCount = sessionTimes.length;
 
     if (existingGroup) {
@@ -103,19 +105,27 @@ export async function handler(event) {
       if (insertGroupError) throw insertGroupError;
     }
 
-    // Always use last 6 (sorted by start_time ASC) for confirmation email, matching frontend session/local storage display
-    const last6 = sessionTimes.slice(-6);
-    const isLatestOfLast6 = last6.length && last6[last6.length - 1].start_time === startTime;
+    // Send email only every 6 bookings
+    if (bookingCount % 6 === 0) {
+      // Take last 6 sessions sorted by booked_at descending (most recent first)
+      const last6Sessions = [...sessionTimes]
+        .sort((a, b) => new Date(b.booked_at) - new Date(a.booked_at))
+        .slice(0, 6);
 
-    // Send email only ONCE per group of 6, only for the LAST (latest) booking in the group
-    if (isLatestOfLast6 && bookingCount % 6 === 0) {
-      const formattedTimes = last6
+      // Then reorder those 6 by start_time ascending (earliest time at top)
+      const last6SortedByStartTime = last6Sessions.sort(
+        (a, b) => new Date(a.start_time) - new Date(b.start_time)
+      );
+
+      // Format times for email in user's timezone
+      const formattedTimes = last6SortedByStartTime
         .map(s => {
           const dt = DateTime.fromISO(s.start_time, { zone: "UTC" }).setZone(timezone);
           return `<li><b>${dt.toLocaleString(DateTime.DATETIME_MED)}</b></li>`;
         })
         .join("");
-      const isFirstBatch = sessionTimes.length === 6;
+
+      const isFirstBatch = bookingCount === 6;
 
       const emailHtml = isFirstBatch
         ? welcomeEmail(name, formattedTimes, logoUrl)
@@ -139,12 +149,23 @@ export async function handler(event) {
         const errBody = await sendResult.text();
         throw new Error(`Resend API error: ${sendResult.status} - ${errBody}`);
       }
+
+      // Mark sent_email flag true after first welcome batch
+      if (isFirstBatch) {
+        const { error: markSentError } = await supabase
+          .from('booking_groups')
+          .update({ sent_email: true })
+          .eq('email', email)
+          .eq('event_id', eventId);
+
+        if (markSentError) throw markSentError;
+      }
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, bookingCount, last6 }),
+      body: JSON.stringify({ success: true, bookingCount }),
     };
   } catch (err) {
     return {

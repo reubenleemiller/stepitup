@@ -1,19 +1,55 @@
 (function() {
-  // Helper to get URL param
   function getParam(key) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(key);
   }
 
-  // Renders the confirmation using a session array
-  function renderConfirmation(bookedSessions) {
+  function saveCurrentSession() {
+    const attendeeName = getParam("attendeeName");
+    const startTime = getParam("startTime");
+    if (!attendeeName || !startTime) return;
+    let bookedSessions = [];
+    try {
+      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+    } catch (e) {}
+    if (!bookedSessions.some(s => s.attendeeName === attendeeName && s.startTime === startTime)) {
+      bookedSessions.push({ attendeeName, startTime });
+      if (bookedSessions.length > 6) bookedSessions = bookedSessions.slice(-6);
+      localStorage.setItem("bookedSessions", JSON.stringify(bookedSessions));
+    }
+  }
+
+  // MutationObserver to remove calendar any time it appears
+  function observeAndRemoveCalendar() {
+    let observer = new MutationObserver(() => {
+      document.querySelectorAll("iframe, .cal-com-embed, .cal-embed, [data-cal-embed]").forEach(el => el.remove());
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    // Remove immediately in case already present
+    document.querySelectorAll("iframe, .cal-com-embed, .cal-embed, [data-cal-embed]").forEach(el => el.remove());
+  }
+
+  function removeEmbeddedCalendarIfNeeded() {
+    let bookedSessions = [];
+    try {
+      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+    } catch (e) {}
+    if (bookedSessions.length >= 12) {
+      observeAndRemoveCalendar();
+    }
+  }
+
+  function renderConfirmation() {
+    let bookedSessions = [];
+    try {
+      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+    } catch (e) {}
     // Always remove container first
     document.querySelectorAll(".confirmation-container").forEach(e => e.remove());
 
-    if (!bookedSessions || !bookedSessions.length) return;
+    if (!bookedSessions.length) return;
 
-    // Sort for display (ascending)
-    bookedSessions.sort((a, b) => new Date(a.start_time || a.startTime) - new Date(b.start_time || b.startTime));
+    bookedSessions.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 
     const container = document.createElement("div");
     container.className = "confirmation-container";
@@ -26,10 +62,9 @@
 
     // List all bookings with message AND horizontal bar between
     bookedSessions.forEach((session, idx) => {
-      const attendeeName = session.attendeeName || getParam("attendeeName") || "";
-      const rawTime = session.start_time || session.startTime;
-      const date = new Date(rawTime);
-      if (!rawTime || isNaN(date)) return;
+      const { attendeeName, startTime } = session;
+      const date = new Date(startTime);
+      if (!attendeeName || !startTime || isNaN(date)) return;
 
       const formattedTime = new Intl.DateTimeFormat(undefined, {
         weekday: "long",
@@ -68,12 +103,15 @@
     clearBtn.textContent = "Clear Booking";
     clearBtn.className = "confirmation-clear-btn";
     clearBtn.onclick = function() {
-      let sessions = bookedSessions.slice();
+      let sessions = [];
+      try {
+        sessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+      } catch (e) {}
       if (sessions.length) {
-        sessions.shift(); // Remove first
-        sessionStorage.setItem("bookedSessions", JSON.stringify(sessions));
+        sessions.shift(); // Remove the first session
+        localStorage.setItem("bookedSessions", JSON.stringify(sessions));
       }
-      renderConfirmation(sessions);
+      renderConfirmation();
       removeEmbeddedCalendarIfNeeded();
     };
     container.appendChild(clearBtn);
@@ -87,71 +125,9 @@
     }
   }
 
-  // Remove calendar if >=2 sessions booked
-  function observeAndRemoveCalendar() {
-    let observer = new MutationObserver(() => {
-      document.querySelectorAll("iframe, .cal-com-embed, .cal-embed, [data-cal-embed]").forEach(el => el.remove());
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    // Remove immediately in case already present
-    document.querySelectorAll("iframe, .cal-com-embed, .cal-embed, [data-cal-embed]").forEach(el => el.remove());
-  }
-
-  function removeEmbeddedCalendarIfNeeded() {
-    let bookedSessions = [];
-    try {
-      bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
-    } catch (e) {}
-    if (bookedSessions.length >= 2) {
-      observeAndRemoveCalendar();
-    }
-  }
-
-  // Fetch last6 from the backend via Netlify Function
-  function fetchAndRenderBookings() {
-    // Get user email and event_id from URL params
-    const email = getParam("email");
-    const eventId = getParam("event") || getParam("event_id") || getParam("eventTypeId");
-
-    if (!email || !eventId) {
-      // fallback to sessionStorage as last resort
-      let bookedSessions = [];
-      try {
-        bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
-      } catch (e) {}
-      renderConfirmation(bookedSessions);
-      removeEmbeddedCalendarIfNeeded();
-      return;
-    }
-
-    fetch(`/.netlify/functions/booking-confirmation?email=${encodeURIComponent(email)}&event=${encodeURIComponent(eventId)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.last6 && Array.isArray(data.last6) && data.last6.length) {
-          sessionStorage.setItem("bookedSessions", JSON.stringify(data.last6));
-          renderConfirmation(data.last6);
-        } else {
-          // fallback to sessionStorage
-          let bookedSessions = [];
-          try {
-            bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
-          } catch (e) {}
-          renderConfirmation(bookedSessions);
-        }
-        removeEmbeddedCalendarIfNeeded();
-      })
-      .catch(() => {
-        // fallback to sessionStorage
-        let bookedSessions = [];
-        try {
-          bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
-        } catch (e) {}
-        renderConfirmation(bookedSessions);
-        removeEmbeddedCalendarIfNeeded();
-      });
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
-    fetchAndRenderBookings();
+    saveCurrentSession();
+    renderConfirmation();
+    removeEmbeddedCalendarIfNeeded();
   });
 })();
