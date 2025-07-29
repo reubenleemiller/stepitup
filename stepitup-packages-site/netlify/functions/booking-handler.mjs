@@ -62,7 +62,11 @@ export async function handler(event) {
     if (bookingError) throw bookingError;
 
     if (existingBooking) {
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, duplicateBooking: true }) };
+      // Return last6 as it exists right now for the frontend
+      const sessionTimes = existingGroup?.session_start_times || [];
+      sessionTimes.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+      const last6 = sessionTimes.slice(-6);
+      return { statusCode: 200, headers, body: JSON.stringify({ success: true, duplicateBooking: true, last6 }) };
     }
 
     // Insert new booking id for tracking
@@ -140,7 +144,7 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, bookingCount }),
+      body: JSON.stringify({ success: true, bookingCount, last6 }),
     };
   } catch (err) {
     return {
