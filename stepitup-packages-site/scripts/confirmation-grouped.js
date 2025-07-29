@@ -34,7 +34,7 @@
     try {
       bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
     } catch (e) {}
-    if (bookedSessions.length >= 12) {
+    if (bookedSessions.length >= 2) {
       observeAndRemoveCalendar();
     }
   }
