@@ -107,11 +107,11 @@
     }
   }
 
-  // After a booking is made, get the last6 from backend and render it
+  // Fetch last6 from the backend via Netlify Function
   function fetchAndRenderBookings() {
-    // Get user/email and event_id from URL params or global vars as needed
+    // Get user email and event_id from URL params
     const email = getParam("email");
-    const eventId = getParam("eventTypeSlug") || getParam("event_id") || getParam("eventTypeId");
+    const eventId = getParam("event") || getParam("event_id") || getParam("eventTypeId");
 
     if (!email || !eventId) {
       // fallback to sessionStorage as last resort
@@ -124,7 +124,7 @@
       return;
     }
 
-    fetch(`/api/booking/confirmation?email=${encodeURIComponent(email)}&event=${encodeURIComponent(eventId)}`)
+    fetch(`/.netlify/functions/booking-confirmation?email=${encodeURIComponent(email)}&event=${encodeURIComponent(eventId)}`)
       .then(res => res.json())
       .then(data => {
         if (data.last6 && Array.isArray(data.last6) && data.last6.length) {
