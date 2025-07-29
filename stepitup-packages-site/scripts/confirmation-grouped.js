@@ -10,12 +10,12 @@
     if (!attendeeName || !startTime) return;
     let bookedSessions = [];
     try {
-      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+      bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
     } catch (e) {}
     if (!bookedSessions.some(s => s.attendeeName === attendeeName && s.startTime === startTime)) {
       bookedSessions.push({ attendeeName, startTime });
       if (bookedSessions.length > 6) bookedSessions = bookedSessions.slice(-6);
-      localStorage.setItem("bookedSessions", JSON.stringify(bookedSessions));
+      sessionStorage.setItem("bookedSessions", JSON.stringify(bookedSessions));
     }
   }
 
@@ -32,7 +32,7 @@
   function removeEmbeddedCalendarIfNeeded() {
     let bookedSessions = [];
     try {
-      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+      bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
     } catch (e) {}
     if (bookedSessions.length >= 2) {
       observeAndRemoveCalendar();
@@ -42,7 +42,7 @@
   function renderConfirmation() {
     let bookedSessions = [];
     try {
-      bookedSessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+      bookedSessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
     } catch (e) {}
     // Always remove container first
     document.querySelectorAll(".confirmation-container").forEach(e => e.remove());
@@ -105,11 +105,11 @@
     clearBtn.onclick = function() {
       let sessions = [];
       try {
-        sessions = JSON.parse(localStorage.getItem("bookedSessions") || "[]");
+        sessions = JSON.parse(sessionStorage.getItem("bookedSessions") || "[]");
       } catch (e) {}
       if (sessions.length) {
         sessions.shift(); // Remove the first session
-        localStorage.setItem("bookedSessions", JSON.stringify(sessions));
+        sessionStorage.setItem("bookedSessions", JSON.stringify(sessions));
       }
       renderConfirmation();
       removeEmbeddedCalendarIfNeeded();

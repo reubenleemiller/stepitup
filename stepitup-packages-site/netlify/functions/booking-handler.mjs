@@ -23,10 +23,7 @@ export async function handler(event) {
     return { statusCode: 400, headers, body: 'Invalid JSON' };
   }
 
-  // Cal.com payload may be wrapped in payload key or sent raw
   const payload = data.payload || data;
-
-  // Extract relevant fields, handling possible naming differences
   const bookingId = payload.bookingId || payload.id;
   const eventId = payload.eventTypeId || payload.event_type_id;
   const startTime = payload.startTime || payload.start_time;
@@ -65,7 +62,6 @@ export async function handler(event) {
     if (bookingError) throw bookingError;
 
     if (existingBooking) {
-      // Duplicate booking, no email sent
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, duplicateBooking: true }) };
     }
 
@@ -77,7 +73,6 @@ export async function handler(event) {
     if (insertBookingError) throw insertBookingError;
 
     // Maintain session times array with booking timestamps
-    // If existing group: update array, else create new group
     let sessionTimes = existingGroup?.session_start_times || [];
 
     // Add current booking time with timestamp
@@ -85,9 +80,8 @@ export async function handler(event) {
       sessionTimes.push({ start_time: startTime, booked_at: new Date().toISOString() });
     }
 
-    // Sort sessionTimes by start_time ascending (optional, for DB consistency)
+    // Sort sessionTimes by start_time ascending (for DB consistency)
     sessionTimes.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-
     const bookingCount = sessionTimes.length;
 
     if (existingGroup) {
@@ -105,60 +99,48 @@ export async function handler(event) {
       if (insertGroupError) throw insertGroupError;
     }
 
-    // Send email only every 6 bookings
+    // Send email only ONCE per group of 6, only for the LAST (latest) booking in the group
     if (bookingCount % 6 === 0) {
-      // Take last 6 sessions sorted by booked_at descending (most recent first)
-      const last6Sessions = [...sessionTimes]
-        .sort((a, b) => new Date(b.booked_at) - new Date(a.booked_at))
-        .slice(0, 6);
-
-      // Then reorder those 6 by start_time ascending (earliest time at top)
-      const last6SortedByStartTime = last6Sessions.sort(
-        (a, b) => new Date(a.start_time) - new Date(b.start_time)
+      // Get the last 6 sessions
+      const last6 = sessionTimes.slice(-6);
+      // Find the latest startTime among the last 6
+      const latestStart = last6.reduce(
+        (max, s) => new Date(s.start_time) > new Date(max.start_time) ? s : max,
+        last6[0]
       );
+      // Only send email if this booking is the latest in group of 6
+      if (latestStart.start_time === startTime) {
+        // Format for email
+        const formattedTimes = last6
+          .map(s => {
+            const dt = DateTime.fromISO(s.start_time, { zone: "UTC" }).setZone(timezone);
+            return `<li><b>${dt.toLocaleString(DateTime.DATETIME_MED)}</b></li>`;
+          })
+          .join("");
+        const isFirstBatch = sessionTimes.length === 6;
 
-      // Format times for email in user's timezone
-      const formattedTimes = last6SortedByStartTime
-        .map(s => {
-          const dt = DateTime.fromISO(s.start_time, { zone: "UTC" }).setZone(timezone);
-          return `<li><b>${dt.toLocaleString(DateTime.DATETIME_MED)}</b></li>`;
-        })
-        .join("");
+        const emailHtml = isFirstBatch
+          ? welcomeEmail(name, formattedTimes, logoUrl)
+          : confirmationEmail(name, formattedTimes, logoUrl);
 
-      const isFirstBatch = bookingCount === 6;
+        const sendResult = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: "Step it Up Learning <info@stepituplearning.ca>",
+            to: email,
+            subject: "Your Step it Up Learning Sessions",
+            html: emailHtml,
+          }),
+        });
 
-      const emailHtml = isFirstBatch
-        ? welcomeEmail(name, formattedTimes, logoUrl)
-        : confirmationEmail(name, formattedTimes, logoUrl);
-
-      const sendResult = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: "Step it Up Learning <info@stepituplearning.ca>",
-          to: email,
-          subject: "Your Step it Up Learning Sessions",
-          html: emailHtml,
-        }),
-      });
-
-      if (!sendResult.ok) {
-        const errBody = await sendResult.text();
-        throw new Error(`Resend API error: ${sendResult.status} - ${errBody}`);
-      }
-
-      // Mark sent_email flag true after first welcome batch
-      if (isFirstBatch) {
-        const { error: markSentError } = await supabase
-          .from('booking_groups')
-          .update({ sent_email: true })
-          .eq('email', email)
-          .eq('event_id', eventId);
-
-        if (markSentError) throw markSentError;
+        if (!sendResult.ok) {
+          const errBody = await sendResult.text();
+          throw new Error(`Resend API error: ${sendResult.status} - ${errBody}`);
+        }
       }
     }
 

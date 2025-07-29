@@ -1,4 +1,4 @@
-const stripe = Stripe("pk_live_51RcDEiEAXTaZVoaTK0xXr59LktlXUozw9WXX2NiOIAmuqxZbYRSXneL7IYIiCpRoKqMiyhIwOgDSVNiYzieXr8Wi00L7SmoVSs");
+const stripe = Stripe("pk_test_51RcDEiEAXTaZVoaT2U1hxVFF38IEdvsFLBd4bYkNKt7xAX8ameyrSzFI9SwtdAwOmkTetHcJEACb5mmI3QSmjm3g007b490hsX");
 
 let elements;
 let clientSecret;
