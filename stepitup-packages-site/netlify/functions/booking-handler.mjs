@@ -99,48 +99,41 @@ export async function handler(event) {
       if (insertGroupError) throw insertGroupError;
     }
 
+    // Always use last 6 (sorted by start_time ASC) for confirmation email, matching frontend session/local storage display
+    const last6 = sessionTimes.slice(-6);
+    const isLatestOfLast6 = last6.length && last6[last6.length - 1].start_time === startTime;
+
     // Send email only ONCE per group of 6, only for the LAST (latest) booking in the group
-    if (bookingCount % 6 === 0) {
-      // Get the last 6 sessions
-      const last6 = sessionTimes.slice(-6);
-      // Find the latest startTime among the last 6
-      const latestStart = last6.reduce(
-        (max, s) => new Date(s.start_time) > new Date(max.start_time) ? s : max,
-        last6[0]
-      );
-      // Only send email if this booking is the latest in group of 6
-      if (latestStart.start_time === startTime) {
-        // Format for email
-        const formattedTimes = last6
-          .map(s => {
-            const dt = DateTime.fromISO(s.start_time, { zone: "UTC" }).setZone(timezone);
-            return `<li><b>${dt.toLocaleString(DateTime.DATETIME_MED)}</b></li>`;
-          })
-          .join("");
-        const isFirstBatch = sessionTimes.length === 6;
+    if (isLatestOfLast6 && bookingCount % 6 === 0) {
+      const formattedTimes = last6
+        .map(s => {
+          const dt = DateTime.fromISO(s.start_time, { zone: "UTC" }).setZone(timezone);
+          return `<li><b>${dt.toLocaleString(DateTime.DATETIME_MED)}</b></li>`;
+        })
+        .join("");
+      const isFirstBatch = sessionTimes.length === 6;
 
-        const emailHtml = isFirstBatch
-          ? welcomeEmail(name, formattedTimes, logoUrl)
-          : confirmationEmail(name, formattedTimes, logoUrl);
+      const emailHtml = isFirstBatch
+        ? welcomeEmail(name, formattedTimes, logoUrl)
+        : confirmationEmail(name, formattedTimes, logoUrl);
 
-        const sendResult = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: "Step it Up Learning <info@stepituplearning.ca>",
-            to: email,
-            subject: "Your Step it Up Learning Sessions",
-            html: emailHtml,
-          }),
-        });
+      const sendResult = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: "Step it Up Learning <info@stepituplearning.ca>",
+          to: email,
+          subject: "Your Step it Up Learning Sessions",
+          html: emailHtml,
+        }),
+      });
 
-        if (!sendResult.ok) {
-          const errBody = await sendResult.text();
-          throw new Error(`Resend API error: ${sendResult.status} - ${errBody}`);
-        }
+      if (!sendResult.ok) {
+        const errBody = await sendResult.text();
+        throw new Error(`Resend API error: ${sendResult.status} - ${errBody}`);
       }
     }
 
