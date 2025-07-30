@@ -66,7 +66,7 @@ async function renderFeaturedCarousel() {
   window.featuredSwiper = new Swiper('#featured-carousel', {
     loop: false,
     autoplay: {
-      delay: 5000,
+      delay: 20000,
       disableOnInteraction: false,
     },
     pagination: {
