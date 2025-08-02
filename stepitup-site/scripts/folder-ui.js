@@ -1,5 +1,5 @@
 const API_BASE = '/.netlify/functions/listResources';
-const SUPABASE_PUBLIC_URL = window.SUPABASE_PUBLIC_URL;
+const SUPABASE_PUBLIC_URL = 'https://dvsruqzfdzjyahknixmk.supabase.co/storage/v1/object/public/resources';
 
 const FOLDER_SVG = `<svg class="folder-icon-svg" viewBox="0 0 24 24" width="24" height="24"><path fill="#2c77cc" d="M10 4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h6z" /></svg>`;
 
