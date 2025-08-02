@@ -45,7 +45,7 @@ exports.handler = async function(event) {
       subject: "Welcome to Step It Up Learning!",
       html: `
         <div style="font-family:sans-serif;font-size:16px;line-height:1.7;">
-          <p>Hi Everyone,</p>
+          <p>Hi Friend,</p>
           <p>Thank you for joining the Step It Up family! I’m so glad you’re here.</p>
           <p>I created Step It Up to support K–6 students with the confidence and academic skills they need to succeed — not just in school, but in life. Whether your child is starting Kindergarten or preparing for Grade 6, we’re here to make the transition smoother, stronger, and a little more fun.</p>
           <p>In these newsletters, I’ll be sharing:</p>
