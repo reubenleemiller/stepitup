@@ -2035,3 +2035,39 @@ input[type="file"]::-webkit-file-upload-button:hover {
     justify-content: center;
   }
 }
+.tech-error-box {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  background: #fff6f6;
+  border: 1px solid #ed4040;
+  border-radius: 6px;
+  color: #ed4040;
+  padding: 16px 24px;
+  margin: 16px 0;
+  font-size: 1.1em;
+  font-weight: 500;
+  gap: 0.75em;
+}
+
+.tech-error-box > i {
+  flex-shrink: 0;
+  color: #ed4040;
+  margin-top: 2px;
+  font-size: 1.5em;
+}
+
+.tech-error-box > span {
+  display: block;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0; /* allows text to wrap */
+  word-break: break-word;
+  text-align: center;
+}
+@media (max-width: 480px) {
+.tech-error-box > i {
+	margin-top:3rem;
+	}
+}
