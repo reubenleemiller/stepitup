@@ -9,10 +9,14 @@ async function subscribeNewsletter(email) {
 
 async function enforceNewsletterGate(showResourcesCallback) {
   const container = document.getElementById('folder-tree');
-  // Remove newsletter_email on each session load for fresh check
-  localStorage.removeItem('newsletter_email');
 
-  // Always prompt for email each session
+  // Only prompt if not already subscribed in this browser
+  const savedEmail = localStorage.getItem('newsletter_email');
+  if (savedEmail) {
+    showResourcesCallback();
+    return;
+  }
+
   container.innerHTML = `
     <div style="max-width:400px;margin:2em auto;">
       <label for="newsletter-email" style="font-weight:600;">Enter your email to access free resources:</label>
@@ -38,13 +42,13 @@ async function enforceNewsletterGate(showResourcesCallback) {
       return;
     }
     btn.disabled = true;
-    // Hide button label, show spinner, but reserve space to keep button size fixed
     btnLabel.style.visibility = 'hidden';
     btnSpinner.style.display = "inline-block";
 
     try {
       await subscribeNewsletter(email);
-      // No longer set localStorage, always require email each session
+      // Store email in localStorage for future sessions
+      localStorage.setItem('newsletter_email', email);
       showResourcesCallback();
     } catch (err) {
       errorDiv.textContent = err.message;
@@ -60,7 +64,6 @@ const style = document.createElement('style');
 style.innerHTML = `@keyframes btnspin { to { transform: rotate(360deg); } }`;
 document.head.appendChild(style);
 
-// Wait for DOM ready and for window.loadRoot to be available
 document.addEventListener('DOMContentLoaded', () => {
   function startGate() {
     if (typeof window.loadRoot === "function") {
