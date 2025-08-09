@@ -18,19 +18,37 @@ exports.handler = async function(event, context) {
     };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
+  console.log('Stripe checkout called');
+  console.log('Request body:', event.body);
 
   try {
-    const { cart } = JSON.parse(event.body);
+    // Check if Stripe secret key is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('STRIPE_SECRET_KEY not configured');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: "Stripe not configured properly" }),
+      };
+    }
 
-    // Validate cart
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body);
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Invalid request format" }),
+      };
+    }
+
+    const { cart } = requestBody;
+    console.log('Parsed cart:', cart);
+
     if (!cart || !Array.isArray(cart) || cart.length === 0) {
+      console.error('Invalid cart data:', cart);
       return {
         statusCode: 400,
         headers,
@@ -38,95 +56,76 @@ exports.handler = async function(event, context) {
       };
     }
 
-    // Only allow single-item cart for now (simplifies resource delivery)
-    if (cart.length !== 1) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Only one resource can be purchased at a time for secure delivery." }),
-      };
+    // Validate all cart items
+    for (const item of cart) {
+      if (!item.id || !item.name || typeof item.price !== 'number') {
+        console.error('Invalid cart item:', item);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: "Invalid cart item data" }),
+        };
+      }
     }
 
-    const product = cart[0];
+    console.log('Creating line items...');
 
-    // Validate product data
-    if (!product.id || !product.name || typeof product.price !== 'number') {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Invalid product data" }),
-      };
-    }
-
-    // Ensure price is positive integer (in cents)
-    const unitAmount = Math.round(Math.abs(product.price));
-    if (unitAmount < 50) { // Minimum $0.50
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Product price is too low" }),
-      };
-    }
-
-    // Determine base URL
-    const baseUrl = process.env.URL || process.env.DEPLOY_PRIME_URL || 'https://localhost:8888';
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
+    // Create line items for Stripe checkout
+    const lineItems = cart.map(item => {
+      const lineItem = {
         price_data: {
           currency: 'usd',
-          product_data: { 
-            name: product.name,
-            description: product.description || 'Educational resource from Step it Up Learning',
+          product_data: {
+            name: item.name,
+            description: item.description || 'Educational resource from Step it Up Learning',
             metadata: {
-              product_id: product.id.toString()
+              product_id: item.id.toString(),
+              resource_path: item.resource_path || ''
             }
           },
-          unit_amount: unitAmount,
+          unit_amount: parseInt(item.price), // Price in cents
         },
-        quantity: product.quantity || 1
-      }],
-      mode: 'payment',
-      success_url: `${baseUrl}/pages/confirmation.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/pages/store.html`,
-      metadata: {
-        product_id: product.id.toString(),
-        product_name: product.name,
-        product_category: product.category || 'resource'
-      },
-      customer_creation: 'always',
-      billing_address_collection: 'auto',
-      phone_number_collection: {
-        enabled: false
-      },
-      allow_promotion_codes: true,
-      tax_id_collection: {
-        enabled: false
-      },
-      custom_text: {
-        submit: {
-          message: 'Your resource will be available for download immediately after payment.'
-        }
-      },
-      invoice_creation: {
-        enabled: true,
-        invoice_data: {
-          description: `Purchase of ${product.name} from Step it Up Learning`,
-          metadata: {
-            product_id: product.id.toString(),
-            source: 'stepitup_store'
-          }
-        }
-      }
+        quantity: 1, // Digital products are always quantity 1
+      };
+      console.log('Created line item:', lineItem);
+      return lineItem;
     });
 
-    console.log('Stripe session created:', {
-      session_id: session.id,
-      product_id: product.id,
-      amount: unitAmount
-    });
+    // For multiple items, we'll store the cart data in metadata
+    const cartMetadata = {
+      cart_items: JSON.stringify(cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        resource_path: item.resource_path
+      }))),
+      item_count: cart.length.toString(),
+      store_name: 'Step it Up Resource Store'
+    };
+
+    // If only one item, add its ID to metadata for backward compatibility
+    if (cart.length === 1) {
+      cartMetadata.product_id = cart[0].id.toString();
+    }
+
+    console.log('Cart metadata:', cartMetadata);
+
+    const sessionConfig = {
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'payment',
+      success_url: `${process.env.URL || 'http://localhost:8888'}/pages/confirmation.html?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      cancel_url: `${process.env.URL || 'http://localhost:8888'}/pages/store.html?canceled=true`,
+      metadata: cartMetadata,
+      customer_creation: 'always',
+      billing_address_collection: 'auto',
+      // Remove problematic configurations for now
+    };
+
+    console.log('Creating Stripe session with config:', JSON.stringify(sessionConfig, null, 2));
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log('Stripe session created:', session.id);
 
     return {
       statusCode: 200,
@@ -139,29 +138,15 @@ exports.handler = async function(event, context) {
 
   } catch (error) {
     console.error('Stripe checkout error:', error);
-    
-    // Return user-friendly error messages
-    let errorMessage = 'Failed to create checkout session';
-    
-    if (error.type === 'StripeCardError') {
-      errorMessage = 'There was an issue with your payment method';
-    } else if (error.type === 'StripeRateLimitError') {
-      errorMessage = 'Too many requests. Please try again later';
-    } else if (error.type === 'StripeInvalidRequestError') {
-      errorMessage = 'Invalid payment request. Please try again';
-    } else if (error.type === 'StripeAPIError') {
-      errorMessage = 'Payment service temporarily unavailable';
-    } else if (error.type === 'StripeConnectionError') {
-      errorMessage = 'Network error. Please check your connection';
-    }
+    console.error('Error stack:', error.stack);
     
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: errorMessage,
-        code: error.type || 'unknown_error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: "Failed to create checkout session",
+        details: error.message,
+        type: error.type || 'unknown_error'
       }),
     };
   }

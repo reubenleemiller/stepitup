@@ -15,7 +15,7 @@ module.exports = {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, resource_path, category')
+        .select('id, name, description, price, resource_path, category, image_url')
         .eq('active', true)
         .order('id', { ascending: true });
 
@@ -36,7 +36,7 @@ module.exports = {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, description, price, resource_path, category')
+        .select('id, name, description, price, resource_path, category, image_url')
         .eq('id', id)
         .single();
 
@@ -52,18 +52,24 @@ module.exports = {
     }
   },
 
-  // Insert a purchase record (with duplicate handling)
-  addPurchase: async (stripeSessionId, email, productId) => {
+  // Insert a purchase record (with duplicate handling for specific product)
+  addPurchase: async (stripeSessionId, email, productId, amountPaid = null, currency = 'usd') => {
     try {
-      // First check if purchase already exists
+      // Check if THIS SPECIFIC product purchase already exists for this session
       const { data: existing, error: checkError } = await supabase
         .from('purchases')
         .select('id')
         .eq('stripe_session_id', stripeSessionId)
-        .single();
+        .eq('product_id', productId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error('Error checking existing purchase:', checkError);
+        throw checkError;
+      }
 
       if (existing) {
-        console.log('Purchase already recorded for session:', stripeSessionId);
+        console.log('Purchase already recorded for session:', stripeSessionId, 'product:', productId);
         return existing;
       }
 
@@ -74,7 +80,11 @@ module.exports = {
           {
             stripe_session_id: stripeSessionId,
             email: email,
-            product_id: productId
+            product_id: productId,
+            purchase_date: new Date().toISOString(),
+            status: 'completed',
+            amount_paid: amountPaid,
+            currency: currency
           }
         ])
         .select()
@@ -85,9 +95,40 @@ module.exports = {
         throw error;
       }
 
+      console.log('Purchase recorded:', stripeSessionId, 'product:', productId);
       return data;
     } catch (error) {
       console.error('Error in addPurchase:', error);
+      throw error;
+    }
+  },
+
+  // Get all purchases for a specific session (useful for multi-item orders)
+  getPurchasesBySession: async (stripeSessionId) => {
+    try {
+      const { data, error } = await supabase
+        .from('purchases')
+        .select(`
+          *,
+          products (
+            id,
+            name,
+            description,
+            price,
+            resource_path
+          )
+        `)
+        .eq('stripe_session_id', stripeSessionId)
+        .order('id', { ascending: true });
+
+      if (error) {
+        console.error('Database error fetching session purchases:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getPurchasesBySession:', error);
       throw error;
     }
   },

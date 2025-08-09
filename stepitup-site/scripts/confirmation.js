@@ -7,7 +7,8 @@ class ConfirmationManager {
   constructor() {
     this.sessionId = null;
     this.orderData = null;
-    this.downloadUrl = null;
+    this.downloadUrls = []; // Changed to array for multiple downloads
+    this.products = []; // Store product information
     this.init();
   }
 
@@ -57,26 +58,42 @@ class ConfirmationManager {
       }
 
       const data = await response.json();
+      console.log('Received order data:', data);
       
       if (data.error) {
         throw new Error(data.error);
       }
 
-      // Store the download URL and show success state
-      this.downloadUrl = data.signedUrl;
+      // Handle both old single-download format and new multi-download format
+      if (data.signedUrls && Array.isArray(data.signedUrls)) {
+        // New format - multiple downloads
+        this.downloadUrls = data.signedUrls;
+        this.products = data.products || [];
+      } else if (data.signedUrl) {
+        // Old format - single download (backward compatibility)
+        this.downloadUrls = [{ 
+          productName: data.productName || 'Educational Resource', 
+          signedUrl: data.signedUrl 
+        }];
+        this.products = [{ name: data.productName || 'Educational Resource' }];
+      } else {
+        throw new Error('No download links received');
+      }
+
       this.orderData = {
-        productName: data.productName,
-        sessionId: this.sessionId
+        products: this.products,
+        sessionId: this.sessionId,
+        downloadCount: this.downloadUrls.length
       };
 
       this.showSuccessState();
-      this.setupDownloadButton();
+      this.setupDownloadButtons();
       this.showCelebration();
 
       // Track successful order processing
       this.trackEvent('purchase_complete', {
         session_id: this.sessionId,
-        product_name: data.productName
+        product_count: this.products.length
       });
 
     } catch (error) {
@@ -101,29 +118,34 @@ class ConfirmationManager {
   }
 
   /**
-   * Show success state with order details
+   * Show success state with order details - Updated for multiple products
    */
   showSuccessState() {
     document.getElementById('order-processing').style.display = 'none';
     document.getElementById('order-complete').style.display = 'block';
     document.getElementById('order-error').style.display = 'none';
 
-    // Update order details
+    // Update order details for multiple products
     const orderDetails = document.getElementById('order-details');
     if (orderDetails && this.orderData) {
-      orderDetails.innerHTML = `
+      const productItems = this.products.map(product => `
         <div class="order-item">
           <div class="order-item-name">
             <i class="fas fa-file-download"></i>
-            ${this.escapeHtml(this.orderData.productName || 'Educational Resource')}
+            ${this.escapeHtml(product.name || 'Educational Resource')}
           </div>
           <div class="order-item-status">
             <i class="fas fa-check-circle"></i>
             Ready for Download
           </div>
         </div>
+      `).join('');
+
+      orderDetails.innerHTML = `
+        ${productItems}
         <div class="order-meta">
           <p><strong>Order ID:</strong> ${this.sessionId}</p>
+          <p><strong>Items:</strong> ${this.products.length} resource${this.products.length > 1 ? 's' : ''}</p>
           <p><strong>Status:</strong> <span class="status-complete">Complete</span></p>
           <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
         </div>
@@ -131,7 +153,8 @@ class ConfirmationManager {
     }
 
     // Update page title
-    document.title = 'Purchase Complete - Step it Up Learning';
+    const itemText = this.products.length === 1 ? 'Purchase' : `${this.products.length} Resources`;
+    document.title = `${itemText} Complete - Step it Up Learning`;
   }
 
   /**
@@ -152,99 +175,454 @@ class ConfirmationManager {
   }
 
   /**
-   * Setup download button functionality
+   * Setup download button functionality - Updated for multiple products
    */
-  setupDownloadButton() {
-    const downloadBtn = document.getElementById('download-btn');
-    if (!downloadBtn || !this.downloadUrl) return;
+  setupDownloadButtons() {
+    const downloadContainer = document.getElementById('download-container') || 
+                            document.querySelector('.download-section');
+    
+    if (!downloadContainer || this.downloadUrls.length === 0) return;
 
+    console.log('🔧 Setting up download buttons for', this.downloadUrls.length, 'items');
+
+    // Remove any existing download buttons
+    const existingButtons = downloadContainer.querySelectorAll('.download-btn');
+    existingButtons.forEach(btn => btn.remove());
+
+    // Always show download buttons, whether single or multiple
+    if (this.downloadUrls.length === 1) {
+      console.log('🔧 Setting up SINGLE download buttons');
+      // Single download - use both existing button AND create enhanced section
+      this.setupSingleDownloadButton();
+      this.setupEnhancedSingleDownload();
+    } else {
+      console.log('🔧 Setting up MULTIPLE download buttons');
+      // Multiple downloads - create individual buttons
+      this.setupMultipleDownloadButtons();
+    }
+  }
+
+  /**
+   * Setup single download button (existing functionality)
+   */
+  setupSingleDownloadButton() {
+    const downloadBtn = document.getElementById('download-btn');
+    console.log('🔧 Setting up main download button:', !!downloadBtn);
+    
+    if (!downloadBtn || this.downloadUrls.length === 0) {
+      console.log('❌ No download button found or no download URLs');
+      return;
+    }
+
+    const downloadItem = this.downloadUrls[0];
+    console.log('🔧 Download item:', downloadItem.productName);
+    
     downloadBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      await this.handleDownload();
+      console.log('🖱️ Main download button clicked');
+      await this.handleSingleDownload(downloadItem, downloadBtn);
     });
   }
 
   /**
-   * Handle download process
+   * Setup enhanced single download section (like multi-download but for one item)
    */
-  async handleDownload() {
-    const downloadBtn = document.getElementById('download-btn');
-    const downloadText = document.getElementById('download-text');
-    const downloadSpinner = document.getElementById('download-spinner');
+  setupEnhancedSingleDownload() {
+    const downloadContainer = document.getElementById('download-container') || 
+                            document.querySelector('.download-section');
+    
+    if (!downloadContainer || this.downloadUrls.length === 0) return;
+
+    const downloadItem = this.downloadUrls[0];
+
+    // Create enhanced download section for single item
+    const singleDownloadSection = document.createElement('div');
+    singleDownloadSection.className = 'enhanced-single-download-section';
+    singleDownloadSection.innerHTML = `
+      <h3><i class="fas fa-download"></i> Download Your Resource</h3>
+      <p>Your educational resource is ready for download:</p>
+      <div class="single-download-card">
+        <div class="download-card-content">
+          <i class="fas fa-file-download"></i>
+          <div class="download-card-info">
+            <h4>${this.escapeHtml(downloadItem.productName)}</h4>
+            <p>Educational Resource</p>
+          </div>
+        </div>
+        <button class="enhanced-single-download-btn" id="enhanced-single-download-btn">
+          <i class="fas fa-download"></i>
+          <span>Download</span>
+        </button>
+      </div>
+    `;
+
+    // Setup the enhanced download button
+    const enhancedBtn = singleDownloadSection.querySelector('#enhanced-single-download-btn');
+    enhancedBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await this.handleSingleDownload(downloadItem, enhancedBtn);
+    });
+
+    downloadContainer.appendChild(singleDownloadSection);
+  }
+
+  /**
+   * Setup multiple download buttons
+   */
+  setupMultipleDownloadButtons() {
+    const downloadContainer = document.getElementById('download-container') || 
+                            document.querySelector('.download-section');
+    
+    if (!downloadContainer) return;
+
+    // Hide the default single download button
+    const defaultBtn = document.getElementById('download-btn');
+    if (defaultBtn) {
+      defaultBtn.style.display = 'none';
+    }
+
+    // Create download section
+    const multiDownloadSection = document.createElement('div');
+    multiDownloadSection.className = 'multi-download-section';
+    multiDownloadSection.innerHTML = `
+      <h3><i class="fas fa-download"></i> Download Your Resources</h3>
+      <p>Click each button below to download your educational resources:</p>
+      <div class="download-buttons-grid"></div>
+      <div class="download-all-section">
+        <button class="download-all-btn" id="download-all-btn">
+          <i class="download-all-icon fas fa-file-archive"></i>
+          <span class="download-all-text">Download All as Zip (${this.downloadUrls.length} files)</span>
+        </button>
+        <p class="download-note">All files will be packaged into a single zip file for easy download.</p>
+      </div>
+    `;
+
+    const buttonsGrid = multiDownloadSection.querySelector('.download-buttons-grid');
+    
+    // Create individual download buttons
+    this.downloadUrls.forEach((downloadItem, index) => {
+      const downloadBtn = document.createElement('button');
+      downloadBtn.className = 'individual-download-btn';
+      downloadBtn.innerHTML = `
+        <div class="download-btn-content">
+          <i class="fas fa-file-download"></i>
+          <span class="download-text">${this.escapeHtml(downloadItem.productName)}</span>
+          <div class="download-spinner" style="display: none;"><i class="fas fa-sync fa-spin"></i></div>
+        </div>
+      `;
+      
+      downloadBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await this.handleSingleDownload(downloadItem, downloadBtn);
+      });
+
+      buttonsGrid.appendChild(downloadBtn);
+    });
+
+    // Setup download all button
+    const downloadAllBtn = multiDownloadSection.querySelector('#download-all-btn');
+    downloadAllBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await this.handleDownloadAll();
+    });
+
+    downloadContainer.appendChild(multiDownloadSection);
+  }
+
+  /**
+   * Handle single download
+   */
+  async handleSingleDownload(downloadItem, button) {
+    // For the main download button, look for specific IDs first, then class names
+    const buttonText = button.querySelector('#download-text') || button.querySelector('.download-text');
+    const buttonSpinner = button.querySelector('#download-spinner') || button.querySelector('.download-spinner');
+    const originalText = buttonText ? buttonText.innerHTML : button.innerHTML;
+
+    console.log('🔍 Download button debug:', {
+      buttonId: button.id,
+      hasButtonText: !!buttonText,
+      hasButtonSpinner: !!buttonSpinner,
+      textContent: buttonText?.textContent,
+      spinnerDisplay: buttonSpinner?.style.display,
+      downloadItem: downloadItem
+    });
+
+    // Function to reset button state
+    const resetButton = () => {
+      console.log('🔄 Resetting button state');
+      button.disabled = false;
+      if (buttonText && buttonSpinner) {
+        buttonText.style.display = 'inline-block';
+        buttonSpinner.style.display = 'none';
+      } else if (buttonText) {
+        buttonText.innerHTML = originalText;
+      } else {
+        button.innerHTML = originalText;
+      }
+    };
 
     try {
       // Update UI to show loading
-      downloadBtn.disabled = true;
-      downloadText.innerHTML = '<i class="fas fa-sync fa-spin"></i> Preparing Download...';
-      downloadSpinner.style.display = 'inline-block';
+      button.disabled = true;
+      
+      if (buttonText && buttonSpinner) {
+        // For the main download button with separate text and spinner elements
+        console.log('🔄 Showing spinner for main button');
+        buttonText.style.display = 'none';
+        buttonSpinner.style.display = 'inline-block';
+      } else if (buttonText) {
+        // For other buttons with embedded text
+        console.log('🔄 Showing spinner for other button');
+        buttonText.innerHTML = '<i class="fas fa-sync fa-spin"></i> Preparing...';
+      } else {
+        // Fallback - modify the entire button
+        console.log('🔄 Showing spinner fallback');
+        button.innerHTML = '<i class="fas fa-sync fa-spin"></i> Preparing...';
+      }
+
+      // Validate download URL
+      if (!downloadItem || !downloadItem.signedUrl) {
+        throw new Error('No download URL available');
+      }
+
+      console.log('⬇️ Starting download:', downloadItem.productName);
 
       // Track download initiation
       this.trackEvent('download_initiated', {
         session_id: this.sessionId,
-        product_name: this.orderData?.productName
+        product_name: downloadItem.productName
       });
 
       // Small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Attempt to download
-      if (this.downloadUrl) {
-        // Create a hidden link and click it
-        const link = document.createElement('a');
-        link.href = this.downloadUrl;
-        link.download = ''; // Let browser determine filename
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      // Create and trigger download
+      const link = document.createElement('a');
+      link.href = downloadItem.signedUrl;
+      link.download = downloadItem.productName || 'download';
+      link.target = '_blank';
+      link.style.display = 'none';
+      
+      // Add the link to DOM
+      document.body.appendChild(link);
+      
+      // Trigger the download
+      link.click();
+      console.log('✅ Download triggered for:', downloadItem.productName);
 
-        // Update button to show success
-        downloadText.innerHTML = '<i class="fas fa-check"></i> Download Started!';
-        downloadSpinner.style.display = 'none';
+      // Cleanup immediately
+      document.body.removeChild(link);
+
+      // Show success and reset after short delay
+      setTimeout(() => {
+        if (buttonText && buttonSpinner) {
+          buttonSpinner.style.display = 'none';
+          buttonText.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+          buttonText.style.display = 'inline-block';
+        } else if (buttonText) {
+          buttonText.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+        } else {
+          button.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+        }
+        button.style.background = '#48bb78';
 
         // Track successful download
         this.trackEvent('download_success', {
           session_id: this.sessionId,
-          product_name: this.orderData?.productName
+          product_name: downloadItem.productName
         });
+      }, 500);
 
-        // Show download success message
-        this.showDownloadInstructions();
-
-        // Reset button after delay
-        setTimeout(() => {
-          if (downloadBtn) {
-            downloadBtn.disabled = false;
-            downloadText.innerHTML = '<i class="fas fa-download"></i> Download Again';
-          }
-        }, 5000);
-
-      } else {
-        throw new Error('Download URL not available');
-      }
+      // Reset to original state after showing success
+      setTimeout(() => {
+        resetButton();
+        button.style.background = '';
+      }, 3000);
 
     } catch (error) {
       console.error('Download error:', error);
       
       // Reset UI and show error
-      downloadBtn.disabled = false;
-      downloadText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Download Failed';
-      downloadSpinner.style.display = 'none';
+      button.disabled = false;
+      if (buttonText && buttonSpinner) {
+        // For the main download button with separate text and spinner elements
+        buttonSpinner.style.display = 'none';
+        buttonText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+        buttonText.style.display = 'inline-block';
+      } else if (buttonText) {
+        // For other buttons with embedded text
+        buttonText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+      }
+      button.style.background = '#e53e3e';
       
-      alert('Download failed. Please try again or contact support if the problem persists.');
+      alert(`Download failed for ${downloadItem.productName}. Please try again or contact support.`);
       
       // Track download error
       this.trackEvent('download_error', {
+        session_id: this.sessionId,
+        product_name: downloadItem.productName,
+        error: error.message
+      });
+
+      // Reset button after delay
+      setTimeout(() => {
+        if (button && buttonText) {
+          button.style.background = '';
+          if (buttonSpinner) {
+            buttonSpinner.style.display = 'none';
+            buttonText.style.display = 'inline-block';
+          }
+          buttonText.innerHTML = originalText;
+        }
+      }, 3000);
+    }
+  }
+
+  /**
+   * Handle download all functionality - Using server-side zip
+   */
+  async handleDownloadAll() {
+    const downloadAllBtn = document.getElementById('download-all-btn');
+    const buttonText = downloadAllBtn.querySelector('.download-all-text');
+    const buttonIcon = downloadAllBtn.querySelector('.download-all-icon');
+    const originalText = buttonText.innerHTML;
+    const originalIconClass = buttonIcon.className;
+
+    try {
+      // Update UI to show loading
+      downloadAllBtn.disabled = true;
+      buttonText.innerHTML = 'Creating zip file...';
+      buttonIcon.className = 'download-all-icon fas fa-spinner fa-spin';
+
+      // Track download all initiation
+      this.trackEvent('download_all_initiated', {
+        session_id: this.sessionId,
+        file_count: this.downloadUrls.length
+      });
+
+      // Call the zip download function
+      const response = await fetch(`/.netlify/functions/download-all?session_id=${this.sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      // Update button to show download starting
+      buttonText.innerHTML = 'Downloading zip file...';
+      buttonIcon.className = 'download-all-icon fas fa-download fa-pulse';
+
+      // Get the filename from the response headers
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `StepItUp_Resources_${this.sessionId.substring(0, 8)}.zip`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup the blob URL
+      window.URL.revokeObjectURL(url);
+
+      // Update button to show success
+      buttonText.innerHTML = 'Zip Downloaded!';
+      buttonIcon.className = 'download-all-icon fas fa-check';
+      downloadAllBtn.style.background = '#48bb78';
+
+      // Track successful download all
+      this.trackEvent('download_all_success', {
+        session_id: this.sessionId,
+        file_count: this.downloadUrls.length,
+        download_type: 'zip'
+      });
+
+      // Show download instructions for zip
+      this.showZipDownloadInstructions();
+
+      // Reset button after delay
+      setTimeout(() => {
+        downloadAllBtn.disabled = false;
+        downloadAllBtn.style.background = '';
+        buttonText.innerHTML = originalText;
+        buttonIcon.className = originalIconClass;
+      }, 5000);
+
+    } catch (error) {
+      console.error('Download all error:', error);
+      
+      // Reset UI and show error
+      downloadAllBtn.disabled = false;
+      buttonText.innerHTML = 'Download Failed';
+      buttonIcon.className = 'download-all-icon fas fa-exclamation-triangle';
+      downloadAllBtn.style.background = '#e53e3e';
+      
+      alert('Failed to create zip file. Please try downloading individual files or contact support if the problem persists.');
+      
+      // Track download all error
+      this.trackEvent('download_all_error', {
         session_id: this.sessionId,
         error: error.message
       });
 
       // Reset button after delay
       setTimeout(() => {
-        if (downloadBtn && downloadText) {
-          downloadText.innerHTML = '<i class="fas fa-download"></i> Try Download Again';
-        }
+        downloadAllBtn.style.background = '';
+        buttonText.innerHTML = originalText;
+        buttonIcon.className = originalIconClass;
       }, 3000);
+    }
+  }
+
+  /**
+   * Show download instructions for zip file
+   */
+  showZipDownloadInstructions() {
+    const instructionsHtml = `
+      <div class="download-success-message">
+        <div class="success-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h4>Zip File Downloaded!</h4>
+        <p>Your ${this.downloadUrls.length} resource${this.downloadUrls.length > 1 ? 's have' : ' has'} been packaged into a single zip file. If the download doesn't start:</p>
+        <ul>
+          <li>Check your browser's download settings</li>
+          <li>Look for the zip file in your Downloads folder</li>
+          <li>Extract the zip file to access your individual resources</li>
+          <li>Try clicking the "Download All" button again</li>
+        </ul>
+        <p><strong>Need help?</strong> Contact us at <a href="mailto:info@stepituplearning.ca">info@stepituplearning.ca</a></p>
+      </div>
+    `;
+
+    const downloadSection = document.querySelector('.download-section') || document.querySelector('.multi-download-section');
+    if (downloadSection) {
+      // Remove any existing success messages
+      const existingSuccess = downloadSection.querySelector('.download-success');
+      if (existingSuccess) existingSuccess.remove();
+
+      const successDiv = document.createElement('div');
+      successDiv.innerHTML = instructionsHtml;
+      successDiv.className = 'download-success';
+      downloadSection.appendChild(successDiv);
     }
   }
 
@@ -257,19 +635,23 @@ class ConfirmationManager {
         <div class="success-icon">
           <i class="fas fa-check-circle"></i>
         </div>
-        <h4>Download Successful!</h4>
-        <p>Your resource should begin downloading automatically. If it doesn't start:</p>
+        <h4>Downloads Successful!</h4>
+        <p>Your ${this.downloadUrls.length} resource${this.downloadUrls.length > 1 ? 's' : ''} should be downloading now. If any don't start:</p>
         <ul>
           <li>Check your browser's download settings</li>
-          <li>Look for the file in your Downloads folder</li>
-          <li>Try clicking the download button again</li>
+          <li>Look for the files in your Downloads folder</li>
+          <li>Try clicking the individual download buttons again</li>
         </ul>
         <p><strong>Need help?</strong> Contact us at <a href="mailto:info@stepituplearning.ca">info@stepituplearning.ca</a></p>
       </div>
     `;
 
-    const downloadSection = document.querySelector('.download-section');
+    const downloadSection = document.querySelector('.download-section') || document.querySelector('.multi-download-section');
     if (downloadSection) {
+      // Remove any existing success messages
+      const existingSuccess = downloadSection.querySelector('.download-success');
+      if (existingSuccess) existingSuccess.remove();
+
       const successDiv = document.createElement('div');
       successDiv.innerHTML = instructionsHtml;
       successDiv.className = 'download-success';
@@ -289,8 +671,8 @@ class ConfirmationManager {
    * Create confetti animation
    */
   createConfetti() {
-    const colors = ['#667eea', '#764ba2', '#48bb78', '#f6ad55', '#e53e3e'];
-    const confettiCount = 60;
+    const colors = ['#2c77cc', '#48bb78', '#f6ad55', '#667eea', '#764ba2'];
+    const confettiCount = this.downloadUrls.length > 1 ? 100 : 60; // More confetti for multiple items
 
     for (let i = 0; i < confettiCount; i++) {
       setTimeout(() => {
@@ -317,12 +699,12 @@ class ConfirmationManager {
             confetti.parentNode.removeChild(confetti);
           }
         }, 6000);
-      }, i * 100);
+      }, i * 80);
     }
   }
 
   /**
-   * Add celebration styles
+   * Add celebration styles - Updated for multiple downloads
    */
   addCelebrationStyles() {
     if (document.getElementById('celebration-styles')) return;
@@ -337,6 +719,183 @@ class ConfirmationManager {
         }
       }
       
+      .multi-download-section {
+        background: #f7fafc;
+        border: 2px solid #2c77cc;
+        border-radius: 12px;
+        padding: 2em;
+        margin: 2em 0;
+        text-align: center;
+      }
+      
+      .multi-download-section h3 {
+        color: #2c77cc;
+        margin: 0 0 1em 0;
+      }
+      
+      .multi-download-section p {
+        color: #4a5568;
+        margin: 0 0 1.5em 0;
+      }
+      
+      .download-buttons-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1em;
+        margin: 1.5em 0;
+      }
+      
+      .individual-download-btn {
+        background: #2c77cc;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 1em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+      }
+      
+      .individual-download-btn:hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(44, 119, 204, 0.3);
+      }
+      
+      .individual-download-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      .download-btn-content {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5em;
+      }
+      
+      .download-all-section {
+        margin-top: 2em;
+        padding-top: 1.5em;
+        border-top: 1px solid #e2e8f0;
+      }
+      
+      .download-all-btn {
+        background: #48bb78;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 1em 2em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        font-size: 1.1em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5em;
+        margin: 0 auto;
+      }
+      
+      .download-all-btn:hover:not(:disabled) {
+        background: #38a169;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+      }
+      
+      .download-all-btn:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      .download-note {
+        font-size: 0.85em;
+        color: #718096;
+        margin-top: 0.5em;
+        font-style: italic;
+      }
+      
+      .enhanced-single-download-section {
+        background: #f7fafc;
+        border: 2px solid #2c77cc;
+        border-radius: 12px;
+        padding: 2em;
+        margin: 2em 0;
+        text-align: center;
+      }
+      
+      .enhanced-single-download-section h3 {
+        color: #2c77cc;
+        margin: 0 0 1em 0;
+      }
+      
+      .enhanced-single-download-section p {
+        color: #4a5568;
+        margin: 0 0 1.5em 0;
+      }
+      
+      .single-download-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 1.5em;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 1em 0;
+      }
+      
+      .download-card-content {
+        display: flex;
+        align-items: center;
+        gap: 1em;
+      }
+      
+      .download-card-content > i {
+        font-size: 2em;
+        color: #2c77cc;
+      }
+      
+      .download-card-info h4 {
+        margin: 0;
+        color: #2d3748;
+        font-weight: 600;
+      }
+      
+      .download-card-info p {
+        margin: 0.2em 0 0 0;
+        color: #718096;
+        font-size: 0.9em;
+      }
+      
+      .enhanced-single-download-btn {
+        background: #2c77cc;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 0.8em 1.5em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+      }
+      
+      .enhanced-single-download-btn:hover:not(:disabled) {
+        background: #2563eb;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(44, 119, 204, 0.3);
+      }
+      
+      .enhanced-single-download-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
       .download-success-message {
         background: #e6fffa;
         border: 2px solid #38a169;
@@ -344,17 +903,20 @@ class ConfirmationManager {
         padding: 1.5em;
         margin-top: 2em;
         animation: slideInUp 0.5s ease;
+        text-align: left;
       }
       
       .download-success-message .success-icon {
         color: #38a169;
         font-size: 2em;
         margin-bottom: 0.5em;
+        text-align: center;
       }
       
       .download-success-message h4 {
         color: #2f855a;
         margin: 0 0 1em 0;
+        text-align: center;
       }
       
       .download-success-message ul {
@@ -416,6 +978,22 @@ class ConfirmationManager {
           transform: translateY(0);
         }
       }
+      
+      @media (max-width: 768px) {
+        .download-buttons-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .multi-download-section {
+          padding: 1.5em;
+        }
+        
+        .individual-download-btn,
+        .download-all-btn {
+          padding: 0.8em;
+          font-size: 0.95em;
+        }
+      }
     `;
     
     document.head.appendChild(style);
@@ -459,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <i class="fas fa-envelope"></i>
         <div>
           <h4>Check Your Email</h4>
-          <p>We've sent your receipt and a permanent download link to your email address. Don't forget to check your spam folder if you don't see it in your inbox.</p>
+          <p>We've sent your receipt and permanent download links to your email address. Don't forget to check your spam folder if you don't see it in your inbox.</p>
         </div>
       </div>
     </div>
