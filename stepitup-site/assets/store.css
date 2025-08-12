@@ -2049,7 +2049,7 @@ transition: all 0.2s ease !important;
   display: flex;
   align-items: center;
   gap: 0.5em;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   position: relative;
 }
 
