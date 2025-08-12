@@ -1,6 +1,6 @@
 /**
- * Store Management System
- * Handles product display, cart functionality, and checkout process
+ * Enhanced Store Management System
+ * Handles product display, cart functionality, file previews, reviews, and checkout process
  */
 
 class StoreManager {
@@ -9,6 +9,9 @@ class StoreManager {
     this.products = [];
     this.currentCategory = 'all';
     this.modalCreated = false;
+    this.currentProductForReview = null;
+    this.reviewsOffset = 0;
+    this.reviewsLimit = 10;
     this.init();
   }
 
@@ -21,7 +24,9 @@ class StoreManager {
       await this.loadProducts();
       this.renderProducts();
       this.renderCart();
+      this.renderCartDropdown();
       this.setupEventListeners();
+      this.setupModalListeners();
       this.hideLoadingState();
     } catch (error) {
       console.error('Store initialization error:', error);
@@ -186,18 +191,40 @@ class StoreManager {
           <span>$${price}</span>
           ${product.featured ? '<span class="price-badge">Popular</span>' : ''}
         </div>
-        <button class="add-to-cart-btn" data-product-id="${product.id}">
-          <i class="fas fa-shopping-cart"></i> Add to Cart
-        </button>
+        <div class="product-actions">
+          <button class="add-to-cart-btn" data-product-id="${product.id}">
+            <i class="fas fa-shopping-cart"></i> Add to Cart
+          </button>
+          <div class="product-secondary-actions">
+            <button class="preview-btn" data-product-id="${product.id}">
+              <i class="fas fa-eye"></i> Preview
+            </button>
+            <button class="reviews-btn" data-product-id="${product.id}">
+              <i class="fas fa-star"></i> Reviews
+            </button>
+          </div>
+        </div>
       </div>
     `;
 
-    // Add click event listener
+    // Add click event listeners
     const addButton = card.querySelector('.add-to-cart-btn');
     addButton.addEventListener('click', (e) => {
       e.preventDefault();
       this.addToCart(product);
       this.showAddedFeedback(addButton);
+    });
+
+    const previewButton = card.querySelector('.preview-btn');
+    previewButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showPreviewModal(product);
+    });
+
+    const reviewsButton = card.querySelector('.reviews-btn');
+    reviewsButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showReviewsModal(product);
     });
 
     return card;
@@ -256,6 +283,7 @@ class StoreManager {
 
     this.saveCart();
     this.renderCart();
+    this.renderCartDropdown();
     this.animateCartUpdate();
 
     // Track add to cart event
@@ -276,6 +304,7 @@ class StoreManager {
       this.cart.splice(itemIndex, 1);
       this.saveCart();
       this.renderCart();
+      this.renderCartDropdown();
 
       // Track remove from cart event
       this.trackEvent('remove_from_cart', {
@@ -293,6 +322,7 @@ class StoreManager {
       this.cart = [];
       this.saveCart();
       this.renderCart();
+      this.renderCartDropdown();
       
       // Track clear cart event
       this.trackEvent('clear_cart');
@@ -535,6 +565,79 @@ class StoreManager {
   }
 
   /**
+   * Render cart dropdown
+   */
+  renderCartDropdown() {
+    const cartDropdownCount = document.getElementById('cart-dropdown-count');
+    const cartDropdownEmpty = document.getElementById('cart-dropdown-empty');
+    const cartDropdownItems = document.getElementById('cart-dropdown-items');
+    const cartDropdownList = document.getElementById('cart-dropdown-list');
+    const cartDropdownTotal = document.getElementById('cart-dropdown-total');
+
+    // Update dropdown cart count
+    const totalItems = this.cart.length;
+    cartDropdownCount.textContent = totalItems;
+
+    // Show/hide dropdown sections
+    if (this.cart.length === 0) {
+      cartDropdownEmpty.style.display = 'block';
+      cartDropdownItems.style.display = 'none';
+      return;
+    } else {
+      cartDropdownEmpty.style.display = 'none';
+      cartDropdownItems.style.display = 'block';
+    }
+
+    // Render dropdown cart items
+    cartDropdownList.innerHTML = '';
+    this.cart.forEach(item => {
+      const li = document.createElement('li');
+      const price = (item.price / 100).toFixed(2);
+      
+      li.innerHTML = `
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; text-align: left; width: 100%; padding: 0; margin: 0; box-sizing: border-box;">
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; margin: 0; padding: 0; text-align: left;">
+    <div style="font-weight: 600; color: #2d3748; font-size: 0.9em; margin: 0; padding: 0; word-break: break-word;">
+      ${this.escapeHtml(item.name)}
+    </div>
+    <div style="color: #718096; font-size: 0.8em; margin: 0; padding: 0;">
+      Cost: ${price}
+    </div>
+  </div>
+  <button class="dropdown-remove-btn" data-product-id="${item.id}"
+    style="background: #e53e3e; color: white; border: none; border-radius: 4px;
+           padding: 0.5em 0.8em; cursor: pointer; font-size: 0.8em;
+           transition: background 0.2s; margin: 0 0 0 0.5rem; white-space: nowrap; flex-shrink: 0;">
+    <i class="fas fa-times"></i>
+  </button>
+</div>
+      `;
+      
+      // Add event listener to remove button
+      const removeBtn = li.querySelector('.dropdown-remove-btn');
+      removeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeFromCart(item.id);
+      });
+      
+      // Add hover effect
+      removeBtn.addEventListener('mouseenter', () => {
+        removeBtn.style.background = '#c53030';
+      });
+      removeBtn.addEventListener('mouseleave', () => {
+        removeBtn.style.background = '#e53e3e';
+      });
+      
+      cartDropdownList.appendChild(li);
+    });
+
+    // Update dropdown total
+    const total = this.cart.reduce((sum, item) => sum + item.price, 0);
+    cartDropdownTotal.textContent = (total / 100).toFixed(2);
+  }
+
+  /**
    * Render cart items list
    */
   renderCartItems() {
@@ -620,6 +723,231 @@ class StoreManager {
         this.handleCategoryFilter(e.target.dataset.category);
       });
     });
+
+    // Cart dropdown functionality
+    this.setupCartDropdown();
+  }
+
+  /**
+   * Setup cart dropdown functionality
+   */
+  setupCartDropdown() {
+    const cartDropdownBtn = document.getElementById('cart-dropdown-btn');
+    const cartDropdownMenu = document.getElementById('cart-dropdown-menu');
+    const closeDropdownBtn = document.getElementById('close-cart-dropdown');
+    const dropdownCheckoutBtn = document.getElementById('cart-dropdown-checkout');
+    const viewFullCartBtn = document.getElementById('view-full-cart');
+
+    // Toggle dropdown
+    if (cartDropdownBtn) {
+      cartDropdownBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cartDropdownMenu.classList.toggle('show');
+      });
+    }
+
+    // Close dropdown
+    if (closeDropdownBtn) {
+      closeDropdownBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cartDropdownMenu.classList.remove('show');
+      });
+    }
+
+    // Dropdown checkout
+    if (dropdownCheckoutBtn) {
+      dropdownCheckoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cartDropdownMenu.classList.remove('show');
+        this.handleCheckout();
+      });
+    }
+
+    // View full cart
+    if (viewFullCartBtn) {
+      viewFullCartBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cartDropdownMenu.classList.remove('show');
+        document.getElementById('cart-section').scrollIntoView({ behavior: 'smooth' });
+      });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!cartDropdownBtn.contains(e.target) && !cartDropdownMenu.contains(e.target)) {
+        cartDropdownMenu.classList.remove('show');
+      }
+    });
+  }
+
+  /**
+   * Setup modal event listeners
+   */
+  setupModalListeners() {
+    this.setupPreviewModalListeners();
+    this.setupReviewsModalListeners();
+    this.setupWriteReviewModalListeners();
+  }
+
+  /**
+   * Setup preview modal listeners
+   */
+  setupPreviewModalListeners() {
+    const previewModal = document.getElementById('preview-modal');
+    const closePreviewBtn = document.getElementById('close-preview-modal');
+
+    if (closePreviewBtn) {
+      closePreviewBtn.addEventListener('click', () => {
+        this.hidePreviewModal();
+      });
+    }
+
+    if (previewModal) {
+      previewModal.addEventListener('click', (e) => {
+        if (e.target === previewModal) {
+          this.hidePreviewModal();
+        }
+      });
+    }
+  }
+
+  /**
+   * Setup reviews modal listeners
+   */
+  setupReviewsModalListeners() {
+    const reviewsModal = document.getElementById('reviews-modal');
+    const closeReviewsBtn = document.getElementById('close-reviews-modal');
+    const writeReviewBtn = document.getElementById('write-review-btn');
+    const loadMoreBtn = document.getElementById('load-more-reviews');
+
+    if (closeReviewsBtn) {
+      closeReviewsBtn.addEventListener('click', () => {
+        this.hideReviewsModal();
+      });
+    }
+
+    if (writeReviewBtn) {
+      writeReviewBtn.addEventListener('click', () => {
+        this.showWriteReviewModal();
+      });
+    }
+
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', () => {
+        this.loadMoreReviews();
+      });
+    }
+
+    if (reviewsModal) {
+      reviewsModal.addEventListener('click', (e) => {
+        if (e.target === reviewsModal) {
+          this.hideReviewsModal();
+        }
+      });
+    }
+
+    // Review filter buttons
+    const reviewFilterBtns = document.querySelectorAll('.review-filter-btn');
+    reviewFilterBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleReviewFilter(btn.dataset.sort);
+      });
+    });
+  }
+
+  /**
+   * Setup write review modal listeners
+   */
+  setupWriteReviewModalListeners() {
+    const writeReviewModal = document.getElementById('write-review-modal');
+    const closeWriteReviewBtn = document.getElementById('close-write-review-modal');
+    const cancelReviewBtn = document.getElementById('cancel-review');
+    const reviewForm = document.getElementById('review-form');
+
+    if (closeWriteReviewBtn) {
+      closeWriteReviewBtn.addEventListener('click', () => {
+        this.hideWriteReviewModal();
+      });
+    }
+
+    if (cancelReviewBtn) {
+      cancelReviewBtn.addEventListener('click', () => {
+        this.hideWriteReviewModal();
+      });
+    }
+
+    if (writeReviewModal) {
+      writeReviewModal.addEventListener('click', (e) => {
+        if (e.target === writeReviewModal) {
+          this.hideWriteReviewModal();
+        }
+      });
+    }
+
+    if (reviewForm) {
+      reviewForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleReviewSubmission();
+      });
+    }
+
+    // Star rating functionality
+    this.setupStarRating();
+  }
+
+  /**
+   * Setup star rating functionality
+   */
+  setupStarRating() {
+    const starRating = document.querySelector('.star-rating');
+    const ratingInput = document.getElementById('rating-value');
+
+    if (starRating && ratingInput) {
+      const stars = starRating.querySelectorAll('i');
+      
+      stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+          const rating = index + 1;
+          ratingInput.value = rating;
+          
+          // Update visual state
+          stars.forEach((s, i) => {
+            if (i < rating) {
+              s.classList.add('selected');
+            } else {
+              s.classList.remove('selected');
+            }
+          });
+        });
+        
+        star.addEventListener('mouseenter', () => {
+          const rating = index + 1;
+          
+          // Show hover state
+          stars.forEach((s, i) => {
+            if (i < rating) {
+              s.style.color = '#fbbf24';
+            } else {
+              s.style.color = '#e2e8f0';
+            }
+          });
+        });
+      });
+      
+      starRating.addEventListener('mouseleave', () => {
+        const currentRating = parseInt(ratingInput.value) || 0;
+        
+        // Restore selected state
+        stars.forEach((s, i) => {
+          if (i < currentRating) {
+            s.style.color = '#fbbf24';
+          } else {
+            s.style.color = '#e2e8f0';
+          }
+        });
+      });
+    }
   }
 
   /**
@@ -804,6 +1132,455 @@ class StoreManager {
    */
   formatPrice(cents) {
     return (cents / 100).toFixed(2);
+  }
+
+  // ==========================================
+  // PREVIEW MODAL FUNCTIONALITY
+  // ==========================================
+
+  /**
+   * Show preview modal for a product
+   */
+  async showPreviewModal(product) {
+    const modal = document.getElementById('preview-modal');
+    const modalTitle = document.getElementById('preview-modal-title');
+    const previewLoading = document.getElementById('preview-loading');
+    const previewContent = document.getElementById('preview-content');
+    const previewError = document.getElementById('preview-error');
+
+    // Set title
+    modalTitle.textContent = `${product.name} - Preview`;
+
+    // Show modal and loading state
+    modal.classList.add('show');
+    previewLoading.style.display = 'block';
+    previewContent.style.display = 'none';
+    previewError.style.display = 'none';
+
+    try {
+      // Fetch previews for this product
+      const response = await fetch(`/.netlify/functions/get-previews?product_id=${product.id}`);
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Failed to load previews');
+      }
+
+      // Hide loading
+      previewLoading.style.display = 'none';
+
+      if (!data.previews || data.previews.length === 0) {
+        // No previews available
+        previewContent.innerHTML = `
+          <div style="text-align: center; padding: 2em; color: #718096;">
+            <i class="fas fa-eye-slash" style="font-size: 3em; margin-bottom: 0.5em; color: #cbd5e0;"></i>
+            <p>No preview available for this resource.</p>
+            <small>Preview will be added soon!</small>
+          </div>
+        `;
+      } else {
+        // Render previews
+        this.renderPreviews(data.previews);
+      }
+
+      previewContent.style.display = 'block';
+
+    } catch (error) {
+      console.error('Error loading previews:', error);
+      previewLoading.style.display = 'none';
+      previewError.style.display = 'block';
+    }
+  }
+
+  /**
+   * Render preview content
+   */
+  renderPreviews(previews) {
+    const previewImages = document.getElementById('preview-images');
+    const previewPdf = document.getElementById('preview-pdf');
+    const previewVideo = document.getElementById('preview-video');
+
+    // Clear previous content
+    previewImages.innerHTML = '';
+    previewPdf.innerHTML = '';
+    previewVideo.innerHTML = '';
+
+    previews.forEach(preview => {
+      switch (preview.preview_type) {
+        case 'image':
+          const img = document.createElement('img');
+          img.src = preview.preview_url;
+          img.alt = preview.description || 'Preview image';
+          img.style.maxWidth = '100%';
+          img.style.borderRadius = '8px';
+          img.style.marginBottom = '1em';
+          previewImages.appendChild(img);
+          break;
+
+        case 'pdf':
+          previewPdf.innerHTML = `
+            <iframe src="${preview.preview_url}" 
+                    width="100%" 
+                    height="500" 
+                    style="border: none; border-radius: 8px;">
+            </iframe>
+          `;
+          break;
+
+        case 'video':
+          previewVideo.innerHTML = `
+            <video controls style="width: 100%; border-radius: 8px;">
+              <source src="${preview.preview_url}" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          `;
+          break;
+      }
+    });
+  }
+
+  /**
+   * Hide preview modal
+   */
+  hidePreviewModal() {
+    const modal = document.getElementById('preview-modal');
+    modal.classList.remove('show');
+  }
+
+  // ==========================================
+  // REVIEWS MODAL FUNCTIONALITY
+  // ==========================================
+
+  /**
+   * Show reviews modal for a product
+   */
+  async showReviewsModal(product) {
+    const modal = document.getElementById('reviews-modal');
+    const modalTitle = document.getElementById('reviews-modal-title');
+
+    // Set current product and reset offset
+    this.currentProductForReview = product;
+    this.reviewsOffset = 0;
+
+    // Set title
+    modalTitle.textContent = `${product.name} - Reviews`;
+
+    // Show modal
+    modal.classList.add('show');
+
+    // Load reviews
+    await this.loadReviews(true);
+  }
+
+  /**
+   * Load reviews for current product
+   */
+  async loadReviews(isInitial = false) {
+    const reviewsLoading = document.getElementById('reviews-loading');
+    const reviewsList = document.getElementById('reviews-list');
+    const reviewsError = document.getElementById('reviews-error');
+    const noReviews = document.getElementById('no-reviews');
+    const loadMoreBtn = document.getElementById('load-more-reviews');
+
+    if (isInitial) {
+      reviewsLoading.style.display = 'block';
+      reviewsList.style.display = 'none';
+      reviewsError.style.display = 'none';
+      noReviews.style.display = 'none';
+      loadMoreBtn.style.display = 'none';
+    }
+
+    try {
+      const currentSort = document.querySelector('.review-filter-btn.active')?.dataset.sort || 'recent';
+      const response = await fetch(`/.netlify/functions/get-reviews?product_id=${this.currentProductForReview.id}&limit=${this.reviewsLimit}&offset=${this.reviewsOffset}&sort=${currentSort}`);
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Failed to load reviews');
+      }
+
+      if (isInitial) {
+        reviewsLoading.style.display = 'none';
+        
+        // Update review stats
+        this.updateReviewStats(data.stats);
+
+        if (!data.reviews || data.reviews.length === 0) {
+          noReviews.style.display = 'block';
+          return;
+        }
+
+        // Clear existing reviews
+        reviewsList.innerHTML = '';
+      }
+
+      // Render reviews
+      this.renderReviews(data.reviews, isInitial);
+      reviewsList.style.display = 'block';
+
+      // Show/hide load more button
+      if (data.pagination.has_more) {
+        loadMoreBtn.style.display = 'block';
+      } else {
+        loadMoreBtn.style.display = 'none';
+      }
+
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+      if (isInitial) {
+        reviewsLoading.style.display = 'none';
+        reviewsError.style.display = 'block';
+      }
+    }
+  }
+
+  /**
+   * Update review statistics display
+   */
+  updateReviewStats(stats) {
+    const averageRating = document.getElementById('average-rating');
+    const totalReviews = document.getElementById('total-reviews');
+    const ratingStars = document.getElementById('rating-stars');
+
+    averageRating.textContent = stats.average_rating;
+    totalReviews.textContent = stats.total_reviews;
+
+    // Update star display
+    ratingStars.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const star = document.createElement('i');
+      star.className = i <= Math.round(stats.average_rating) ? 'fas fa-star' : 'fas fa-star empty';
+      ratingStars.appendChild(star);
+    }
+
+    // Update rating breakdown
+    for (let rating = 1; rating <= 5; rating++) {
+      const count = stats.rating_distribution[rating] || 0;
+      const percentage = stats.total_reviews > 0 ? (count / stats.total_reviews) * 100 : 0;
+      
+      const fillElement = document.querySelector(`.rating-bar-fill[data-rating="${rating}"]`);
+      const countElement = document.querySelector(`.rating-count[data-rating="${rating}"]`);
+      
+      if (fillElement) {
+        fillElement.style.width = `${percentage}%`;
+      }
+      if (countElement) {
+        countElement.textContent = count;
+      }
+    }
+  }
+
+  /**
+   * Render reviews
+   */
+  renderReviews(reviews, isInitial) {
+    const reviewsList = document.getElementById('reviews-list');
+
+    reviews.forEach(review => {
+      const reviewElement = this.createReviewElement(review);
+      reviewsList.appendChild(reviewElement);
+    });
+  }
+
+  /**
+   * Create review element
+   */
+  createReviewElement(review) {
+    const reviewDiv = document.createElement('div');
+    reviewDiv.className = 'review-item';
+
+    const reviewDate = new Date(review.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    const stars = Array.from({length: 5}, (_, i) => 
+      `<i class="fas fa-star ${i < review.rating ? '' : 'empty'}"></i>`
+    ).join('');
+
+    const verifiedBadge = review.purchase_verified 
+      ? '<span class="verified-purchase"><i class="fas fa-check-circle"></i> Verified Purchase</span>'
+      : '';
+
+    const sellerResponse = review.response_from_seller 
+      ? `<div class="seller-response">
+           <div class="seller-response-header">
+             <i class="fas fa-reply"></i> Response from Step it Up Learning
+           </div>
+           <p class="seller-response-text">${this.escapeHtml(review.response_from_seller)}</p>
+         </div>`
+      : '';
+
+    reviewDiv.innerHTML = `
+      <div class="review-header">
+        <div class="reviewer-info">
+          <div class="reviewer-avatar">
+            ${review.customer_name.charAt(0).toUpperCase()}
+          </div>
+          <div class="reviewer-details">
+            <h4>${this.escapeHtml(review.customer_name)}</h4>
+            <div class="reviewer-meta">
+              <div class="review-rating">${stars}</div>
+              <span>${reviewDate}</span>
+              ${verifiedBadge}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="review-content">
+        ${review.review_title ? `<h5>${this.escapeHtml(review.review_title)}</h5>` : ''}
+        ${review.review_text ? `<p class="review-text">${this.escapeHtml(review.review_text)}</p>` : ''}
+      </div>
+      <div class="review-actions">
+        <button class="helpful-btn" onclick="storeManager.markReviewHelpful('${review.id}')">
+          <i class="fas fa-thumbs-up"></i> Helpful (${review.helpful_votes})
+        </button>
+      </div>
+      ${sellerResponse}
+    `;
+
+    return reviewDiv;
+  }
+
+  /**
+   * Handle review filter change
+   */
+  async handleReviewFilter(sortType) {
+    // Update active filter button
+    document.querySelectorAll('.review-filter-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`[data-sort="${sortType}"]`).classList.add('active');
+
+    // Reset offset and reload reviews
+    this.reviewsOffset = 0;
+    await this.loadReviews(true);
+  }
+
+  /**
+   * Load more reviews
+   */
+  async loadMoreReviews() {
+    this.reviewsOffset += this.reviewsLimit;
+    await this.loadReviews(false);
+  }
+
+  /**
+   * Mark review as helpful
+   */
+  async markReviewHelpful(reviewId) {
+    // This would typically require user authentication
+    // For now, just show a message
+    alert('Thank you for your feedback! Feature coming soon.');
+  }
+
+  /**
+   * Hide reviews modal
+   */
+  hideReviewsModal() {
+    const modal = document.getElementById('reviews-modal');
+    modal.classList.remove('show');
+  }
+
+  // ==========================================
+  // WRITE REVIEW MODAL FUNCTIONALITY
+  // ==========================================
+
+  /**
+   * Show write review modal
+   */
+  showWriteReviewModal() {
+    const modal = document.getElementById('write-review-modal');
+    
+    // Reset form
+    const form = document.getElementById('review-form');
+    if (form) {
+      form.reset();
+      document.getElementById('rating-value').value = '';
+      
+      // Reset star rating visual state
+      const stars = document.querySelectorAll('.star-rating i');
+      stars.forEach(star => {
+        star.classList.remove('selected');
+        star.style.color = '#e2e8f0';
+      });
+    }
+
+    modal.classList.add('show');
+  }
+
+  /**
+   * Handle review submission
+   */
+  async handleReviewSubmission() {
+    const submitBtn = document.getElementById('submit-review');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnSpinner = submitBtn.querySelector('.btn-spinner');
+
+    // Get form data
+    const formData = new FormData(document.getElementById('review-form'));
+    const reviewData = {
+      product_id: this.currentProductForReview.id,
+      customer_name: formData.get('name'),
+      customer_email: formData.get('email'),
+      rating: parseInt(formData.get('rating')),
+      review_title: formData.get('title'),
+      review_text: formData.get('review'),
+      stripe_session_id: formData.get('session_id')
+    };
+
+    // Validate required fields
+    if (!reviewData.customer_name || !reviewData.customer_email || !reviewData.rating) {
+      alert('Please fill in all required fields and select a rating.');
+      return;
+    }
+
+    try {
+      // Show loading state
+      submitBtn.disabled = true;
+      btnText.style.display = 'none';
+      btnSpinner.style.display = 'inline-block';
+
+      const response = await fetch('/.netlify/functions/submit-product-review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(reviewData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
+
+      // Success
+      alert('Thank you for your review! It has been submitted successfully.');
+      this.hideWriteReviewModal();
+      
+      // Reload reviews to show the new one
+      this.reviewsOffset = 0;
+      await this.loadReviews(true);
+
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert(`Error submitting review: ${error.message}`);
+    } finally {
+      // Reset button state
+      submitBtn.disabled = false;
+      btnText.style.display = 'inline';
+      btnSpinner.style.display = 'none';
+    }
+  }
+
+  /**
+   * Hide write review modal
+   */
+  hideWriteReviewModal() {
+    const modal = document.getElementById('write-review-modal');
+    modal.classList.remove('show');
   }
 }
 

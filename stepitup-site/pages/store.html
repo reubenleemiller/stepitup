@@ -45,8 +45,52 @@
 </header>
   <div class="store-container">
     <div class="store-header">
-      <h1><i class="fas fa-store"></i> Step It Up Resource Store</h1>
-      <p class="store-description">Premium educational resources to support your learning journey</p>
+      <div class="store-title-section">
+        <div class="title-content">
+          <h1><i class="fas fa-store"></i> Step It Up Resource Store</h1>
+          <p class="store-description">Premium educational resources to support your learning journey</p>
+        </div>
+        
+        <!-- Cart Dropdown Button -->
+        <div class="cart-dropdown-container">
+          <button id="cart-dropdown-btn" class="cart-dropdown-btn">
+            <i class="fas fa-shopping-cart"></i>
+            <span id="cart-dropdown-count" class="cart-dropdown-badge">0</span>
+          </button>
+          
+          <!-- Cart Dropdown Menu -->
+          <div id="cart-dropdown-menu" class="cart-dropdown-menu">
+            <div class="cart-dropdown-header">
+              <h3>Shopping Cart</h3>
+              <button id="close-cart-dropdown" class="close-dropdown-btn">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div id="cart-dropdown-content" class="cart-dropdown-content">
+              <div id="cart-dropdown-empty" class="cart-dropdown-empty">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Your cart is empty</p>
+              </div>
+              
+              <div id="cart-dropdown-items" class="cart-dropdown-items" style="display: none;">
+                <ul id="cart-dropdown-list"></ul>
+                <div class="cart-dropdown-total">
+                  <span>Total: $<span id="cart-dropdown-total">0.00</span></span>
+                </div>
+                <div class="cart-dropdown-actions">
+                  <button id="cart-dropdown-checkout" class="dropdown-checkout-btn">
+                    <i class="fas fa-credit-card"></i> Checkout
+                  </button>
+                  <button id="view-full-cart" class="view-cart-btn">
+                    <i class="fas fa-eye"></i> View Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div id="loading-spinner" class="loading-container">
@@ -120,6 +164,221 @@
       </div>
     </div>
   </div>
+
+  <!-- File Preview Modal -->
+  <div id="preview-modal" class="preview-modal">
+    <div class="preview-modal-content">
+      <div class="preview-modal-header">
+        <h3 id="preview-modal-title">Resource Preview</h3>
+        <button id="close-preview-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="preview-modal-body">
+        <div id="preview-loading" class="preview-loading">
+          <div class="preview-spinner"></div>
+          <p>Loading preview...</p>
+        </div>
+        
+        <div id="preview-content" class="preview-content">
+          <div id="preview-images" class="preview-images"></div>
+          <div id="preview-pdf" class="preview-pdf"></div>
+          <div id="preview-video" class="preview-video"></div>
+        </div>
+        
+        <div id="preview-error" class="preview-error" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Unable to load preview</p>
+        </div>
+      </div>
+      
+      <div class="preview-modal-footer">
+        <p class="preview-note">
+          <i class="fas fa-info-circle"></i>
+          This is a limited preview. Purchase to access the complete resource.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviews Modal -->
+  <div id="reviews-modal" class="reviews-modal">
+    <div class="reviews-modal-content">
+      <div class="reviews-modal-header">
+        <h3 id="reviews-modal-title">Customer Reviews</h3>
+        <button id="close-reviews-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="reviews-modal-body">
+        <!-- Review Stats -->
+        <div id="review-stats" class="review-stats">
+          <div class="overall-rating">
+            <div class="rating-score">
+              <span id="average-rating">0.0</span>
+              <div id="rating-stars" class="rating-stars"></div>
+            </div>
+            <p class="rating-text">
+              <span id="total-reviews">0</span> reviews
+            </p>
+          </div>
+          
+          <div class="rating-breakdown">
+            <div class="rating-bar-container">
+              <div class="rating-bar-row">
+                <span>5★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="5"></div>
+                </div>
+                <span class="rating-count" data-rating="5">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>4★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="4"></div>
+                </div>
+                <span class="rating-count" data-rating="4">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>3★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="3"></div>
+                </div>
+                <span class="rating-count" data-rating="3">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>2★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="2"></div>
+                </div>
+                <span class="rating-count" data-rating="2">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>1★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="1"></div>
+                </div>
+                <span class="rating-count" data-rating="1">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Review Filters -->
+        <div class="review-filters">
+          <button class="review-filter-btn active" data-sort="recent">
+            <i class="fas fa-clock"></i> Most Recent
+          </button>
+          <button class="review-filter-btn" data-sort="rating_high">
+            <i class="fas fa-star"></i> Highest Rated
+          </button>
+          <button class="review-filter-btn" data-sort="helpful">
+            <i class="fas fa-thumbs-up"></i> Most Helpful
+          </button>
+        </div>
+
+        <!-- Reviews List -->
+        <div id="reviews-loading" class="reviews-loading">
+          <div class="reviews-spinner"></div>
+          <p>Loading reviews...</p>
+        </div>
+        
+        <div id="reviews-list" class="reviews-list"></div>
+        
+        <div id="reviews-error" class="reviews-error" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Unable to load reviews</p>
+        </div>
+
+        <div id="no-reviews" class="no-reviews" style="display: none;">
+          <i class="fas fa-comment-slash"></i>
+          <p>No reviews yet</p>
+          <small>Be the first to review this resource!</small>
+        </div>
+
+        <!-- Load More Button -->
+        <div class="reviews-pagination">
+          <button id="load-more-reviews" class="load-more-btn" style="display: none;">
+            <i class="fas fa-chevron-down"></i> Load More Reviews
+          </button>
+        </div>
+      </div>
+      
+      <div class="reviews-modal-footer">
+        <button id="write-review-btn" class="write-review-btn">
+          <i class="fas fa-edit"></i> Write a Review
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Write Review Modal -->
+  <div id="write-review-modal" class="write-review-modal">
+    <div class="write-review-modal-content">
+      <div class="write-review-modal-header">
+        <h3>Write a Review</h3>
+        <button id="close-write-review-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="write-review-modal-body">
+        <form id="review-form">
+          <div class="form-group">
+            <label for="reviewer-name">Your Name *</label>
+            <input type="text" id="reviewer-name" name="name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="reviewer-email">Email Address *</label>
+            <input type="email" id="reviewer-email" name="email" required>
+            <small>Email will not be displayed publicly</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Rating *</label>
+            <div class="rating-input">
+              <div class="star-rating">
+                <i class="fas fa-star" data-rating="1"></i>
+                <i class="fas fa-star" data-rating="2"></i>
+                <i class="fas fa-star" data-rating="3"></i>
+                <i class="fas fa-star" data-rating="4"></i>
+                <i class="fas fa-star" data-rating="5"></i>
+              </div>
+              <input type="hidden" id="rating-value" name="rating" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="review-title">Review Title</label>
+            <input type="text" id="review-title" name="title" placeholder="Summarize your experience">
+          </div>
+          
+          <div class="form-group">
+            <label for="review-text">Your Review</label>
+            <textarea id="review-text" name="review" rows="5" placeholder="Share your thoughts about this resource..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="purchase-verification">Purchase Verification (Optional)</label>
+            <input type="text" id="purchase-verification" name="session_id" placeholder="Stripe session ID from your receipt">
+            <small>Enter your purchase confirmation ID to verify your purchase</small>
+          </div>
+        </form>
+      </div>
+      
+      <div class="write-review-modal-footer">
+        <button type="button" id="cancel-review" class="cancel-review-btn">Cancel</button>
+        <button type="submit" form="review-form" id="submit-review" class="submit-review-btn">
+          <span class="btn-text">Submit Review</span>
+          <div class="btn-spinner" style="display: none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="../scripts/store.js"></script>
 <footer class="footer-flex">
 <div class="footer-links">
