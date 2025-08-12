@@ -1,0 +1,12 @@
+[build]
+  command = ""
+  functions = "netlify/functions"
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+  SECRETS_SCAN_OMIT_VALUES = "dvsruqzfdzjyahknixmk.supabase.co"
+

@@ -114,7 +114,7 @@ exports.handler = async function(event, context) {
       line_items: lineItems,
       mode: 'payment',
       success_url: `${process.env.URL || 'http://localhost:8888'}/pages/confirmation.html?session_id={CHECKOUT_SESSION_ID}&success=true`,
-      cancel_url: `${process.env.URL || 'http://localhost:8888'}/pages/store.html?canceled=true`,
+      cancel_url: `${process.env.URL || 'http://localhost:8888'}/index.html?canceled=true`,
       metadata: cartMetadata,
       customer_creation: 'always',
       billing_address_collection: 'auto',
