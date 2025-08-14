@@ -85,6 +85,13 @@ class StoreManager {
       this.products = Array.isArray(data) ? data : [];
       console.log('Loaded products:', this.products);
       
+      // Debug featured products
+      const featuredProducts = this.products.filter(product => {
+        console.log(`Product: ${product.name}, Featured: ${product.featured}, Type: ${typeof product.featured}`);
+        return product.featured === true || product.featured === 1 || product.featured === "true";
+      });
+      console.log('Featured products found:', featuredProducts);
+      
     } catch (error) {
       console.error('Error loading products:', error);
       throw error;
@@ -99,8 +106,12 @@ class StoreManager {
     
     if (!this.products || this.products.length === 0) {
       productsList.innerHTML = this.createNoProductsMessage();
+      document.getElementById('featured-banner').style.display = 'none';
       return;
     }
+
+    // Render featured products banner first
+    this.renderFeaturedProducts();
 
     // Filter products by category
     const filteredProducts = this.currentCategory === 'all' 
@@ -130,6 +141,126 @@ class StoreManager {
         }, index * 100);
       });
     }, 100);
+  }
+
+  /**
+   * Render featured products banner
+   */
+  renderFeaturedProducts() {
+    const featuredBanner = document.getElementById('featured-banner');
+    const featuredGrid = document.getElementById('featured-products');
+    
+    // Get featured products - check multiple ways a product might be marked as featured
+    const featuredProducts = this.products.filter(product => {
+      const isFeatured = product.featured === true || 
+                        product.featured === 1 || 
+                        product.featured === "true" ||
+                        product.featured === "1";
+      
+      console.log(`Checking product: ${product.name}, featured value: ${product.featured}, is featured: ${isFeatured}`);
+      return isFeatured;
+    });
+    
+    console.log(`Total products: ${this.products.length}, Featured products found: ${featuredProducts.length}`);
+    
+    if (featuredProducts.length === 0) {
+      console.log('No featured products found, hiding banner');
+      featuredBanner.style.display = 'none';
+      return;
+    }
+    
+    console.log('Showing featured banner with products:', featuredProducts.map(p => p.name));
+    featuredBanner.style.display = 'block';
+    featuredGrid.innerHTML = '';
+    
+    featuredProducts.forEach(product => {
+      const featuredCard = this.createFeaturedProductCard(product);
+      featuredGrid.appendChild(featuredCard);
+    });
+  }
+
+  /**
+   * Create featured product card
+   */
+  createFeaturedProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'featured-product-card';
+    card.setAttribute('data-product-id', product.id);
+
+    const price = this.formatPrice(product.price);
+    const category = product.category || 'Resource';
+    const productIcon = this.getProductIcon(category);
+    
+    // Handle product image
+    const imageSection = product.image_url 
+      ? `<img src="${this.escapeHtml(product.image_url)}" alt="${this.escapeHtml(product.name)}" loading="lazy">`
+      : `<div class="fallback-icon"><i class="${productIcon}"></i></div>`;
+    
+    card.innerHTML = `
+      <div class="product-image">
+        ${imageSection}
+        <div class="featured-ribbon">
+          <i class="fas fa-star"></i>
+          <span>Featured</span>
+        </div>
+      </div>
+      <div class="product-content">
+        <div class="product-title-row">
+          <div class="product-category-icon">
+            <i class="${productIcon}"></i>
+          </div>
+          <h3>${this.escapeHtml(product.name)}</h3>
+        </div>
+        <p>${this.escapeHtml(product.description || 'Featured educational resource to support your learning journey.')}</p>
+        <div class="product-price">
+          <span>${price}</span>
+          <span class="price-badge featured">Featured</span>
+        </div>
+        <div class="product-actions">
+          <button class="add-to-cart-btn" data-product-id="${product.id}">
+            <i class="fas fa-shopping-cart"></i> Add to Cart
+          </button>
+          <div class="product-secondary-actions">
+            <button class="preview-btn" data-product-id="${product.id}">
+              <i class="fas fa-eye"></i> Preview
+            </button>
+            <button class="reviews-btn" data-product-id="${product.id}">
+              <i class="fas fa-star"></i> Reviews
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add click event listeners
+    const addButton = card.querySelector('.add-to-cart-btn');
+    addButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.addToCart(product);
+      this.showAddedFeedback(addButton);
+    });
+
+    const previewButton = card.querySelector('.preview-btn');
+    previewButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showPreviewModal(product);
+    });
+
+    const reviewsButton = card.querySelector('.reviews-btn');
+    reviewsButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showReviewsModal(product);
+    });
+
+    return card;
+  }
+
+  /**
+   * Format price in CAD currency
+   */
+  formatPrice(priceInCents) {
+    const price = (priceInCents / 100).toFixed(2);
+    return `CAD $${price}`;
   }
 
   /**
@@ -165,19 +296,37 @@ class StoreManager {
     const card = document.createElement('div');
     card.className = 'product-card';
     card.setAttribute('data-product-id', product.id);
+    
+    // Check if product is featured
+    const isFeatured = product.featured === true || 
+                      product.featured === 1 || 
+                      product.featured === "true" ||
+                      product.featured === "1";
+    
+    if (isFeatured) {
+      card.setAttribute('data-featured', 'true');
+      card.classList.add('featured-product');
+    }
 
-    const price = (product.price / 100).toFixed(2);
+    const price = this.formatPrice(product.price);
     const category = product.category || 'Resource';
     const productIcon = this.getProductIcon(category);
     
     // Handle product image - show image if available, otherwise show icon
     const imageSection = product.image_url 
-      ? `<img src="${this.escapeHtml(product.image_url)}" alt="${this.escapeHtml(product.name)}">`
+      ? `<img src="${this.escapeHtml(product.image_url)}" alt="${this.escapeHtml(product.name)}" loading="lazy">`
       : `<div class="fallback-icon"><i class="${productIcon}"></i></div>`;
+    
+    const featuredRibbon = isFeatured ? 
+      `<div class="featured-ribbon">
+        <i class="fas fa-star"></i>
+        <span>Featured</span>
+      </div>` : '';
     
     card.innerHTML = `
       <div class="product-image">
         ${imageSection}
+        ${featuredRibbon}
       </div>
       <div class="product-content">
         <div class="product-title-row">
@@ -188,8 +337,8 @@ class StoreManager {
         </div>
         <p>${this.escapeHtml(product.description || 'Educational resource to support your learning journey.')}</p>
         <div class="product-price">
-          <span>$${price}</span>
-          ${product.featured ? '<span class="price-badge">Popular</span>' : ''}
+          <span>${price}</span>
+          ${isFeatured ? '<span class="price-badge featured">Featured</span>' : ''}
         </div>
         <div class="product-actions">
           <button class="add-to-cart-btn" data-product-id="${product.id}">
@@ -1214,6 +1363,7 @@ class StoreManager {
           img.style.maxWidth = '100%';
           img.style.borderRadius = '8px';
           img.style.marginBottom = '1em';
+          img.loading = 'lazy';
           previewImages.appendChild(img);
           break;
 
@@ -1433,14 +1583,195 @@ class StoreManager {
         ${review.review_text ? `<p class="review-text">${this.escapeHtml(review.review_text)}</p>` : ''}
       </div>
       <div class="review-actions">
-        <button class="helpful-btn" onclick="storeManager.markReviewHelpful('${review.id}')">
-          <i class="fas fa-thumbs-up"></i> Helpful (${review.helpful_votes})
+        <button class="helpful-btn" data-review-id="${review.id}" data-vote-type="helpful">
+          <i class="fas fa-thumbs-up"></i> 
+          <span class="vote-text">Helpful</span> 
+          <span class="vote-count">(${review.helpful_votes || 0})</span>
+        </button>
+        <button class="not-helpful-btn" data-review-id="${review.id}" data-vote-type="not_helpful">
+          <i class="fas fa-thumbs-down"></i> 
+          <span class="vote-text">Not Helpful</span> 
+          <span class="vote-count">(${review.not_helpful_votes || 0})</span>
         </button>
       </div>
+      <div class="vote-feedback" id="vote-feedback-${review.id}"></div>
       ${sellerResponse}
     `;
 
+    // Add event listeners for voting
+    const helpfulBtn = reviewDiv.querySelector('.helpful-btn');
+    const notHelpfulBtn = reviewDiv.querySelector('.not-helpful-btn');
+
+    helpfulBtn.addEventListener('click', () => {
+      this.handleReviewVote(review.id, 'helpful', helpfulBtn);
+    });
+
+    notHelpfulBtn.addEventListener('click', () => {
+      this.handleReviewVote(review.id, 'not_helpful', notHelpfulBtn);
+    });
+
     return reviewDiv;
+  }
+
+  /**
+   * Handle review voting
+   */
+  async handleReviewVote(reviewId, voteType, buttonElement) {
+    try {
+      // Show spinner in button
+      const voteText = buttonElement.querySelector('.vote-text');
+      const originalText = voteText.textContent;
+      voteText.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      buttonElement.disabled = true;
+
+      // Generate user identifier (combination of browser fingerprint)
+      const userIdentifier = this.generateUserIdentifier();
+
+      const response = await fetch('/.netlify/functions/vote-review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          review_id: reviewId,
+          vote_type: voteType,
+          user_identifier: userIdentifier
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit vote');
+      }
+
+      // Show success modal instead of inline feedback
+      this.showVoteSuccessModal(result.action, voteType);
+
+      // Refresh the review to get updated vote counts
+      setTimeout(() => {
+        this.refreshSingleReview(reviewId);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error voting on review:', error);
+      this.showVoteErrorModal(error.message);
+    } finally {
+      // Reset button state
+      const voteText = buttonElement.querySelector('.vote-text');
+      voteText.textContent = voteType === 'helpful' ? 'Helpful' : 'Not Helpful';
+      buttonElement.disabled = false;
+    }
+  }
+
+  /**
+   * Show vote success modal
+   */
+  showVoteSuccessModal(action, voteType) {
+    // Remove any existing modal
+    this.removeVoteSuccessModal();
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'vote-success-modal';
+    modal.innerHTML = `
+      <div class="vote-success-backdrop">
+        <div class="vote-success-content">
+          <div class="success-animation">
+            <div class="success-checkmark">
+              <div class="check-icon">
+                <span class="icon-line line-tip"></span>
+                <span class="icon-line line-long"></span>
+                <div class="icon-circle"></div>
+                <div class="icon-fix"></div>
+              </div>
+            </div>
+          </div>
+          <div class="success-text">
+            <h3>Vote Submitted Successfully!</h3>
+            <p>Your vote has been recorded. Thank you for your feedback.</p>
+          </div>
+          <button class="success-close-btn" onclick="storeManager.removeVoteSuccessModal()">
+            <i class="fas fa-check"></i> Close
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    setTimeout(() => {
+      modal.classList.add('show');
+    }, 100);
+    
+    // Auto close after 4 seconds
+    setTimeout(() => {
+      this.removeVoteSuccessModal();
+    }, 4000);
+  }
+
+  /**
+   * Show vote error modal
+   */
+  showVoteErrorModal(errorMessage) {
+    // Remove any existing modal
+    this.removeVoteSuccessModal();
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'vote-success-modal';
+    modal.innerHTML = `
+      <div class="vote-success-backdrop">
+        <div class="vote-success-content error">
+          <div class="error-animation">
+            <div class="error-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+          <div class="success-text">
+            <h3>Vote Submission Failed</h3>
+            <p>${errorMessage}</p>
+          </div>
+          <button class="success-close-btn error" onclick="storeManager.removeVoteSuccessModal()">
+            <i class="fas fa-times"></i> Close
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    setTimeout(() => {
+      modal.classList.add('show');
+    }, 100);
+  }
+
+  /**
+   * Remove vote success/error modal
+   */
+  removeVoteSuccessModal() {
+    const modal = document.getElementById('vote-success-modal');
+    if (modal) {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+  }
+
+  /**
+   * Refresh a single review's vote counts
+   */
+  async refreshSingleReview(reviewId) {
+    try {
+      // For now, we'll reload all reviews to get updated counts
+      // In a more sophisticated system, you might have an endpoint for single reviews
+      await this.loadReviews(true);
+    } catch (error) {
+      console.error('Error refreshing review:', error);
+    }
   }
 
   /**
@@ -1517,7 +1848,7 @@ class StoreManager {
     const submitBtn = document.getElementById('submit-review');
     const btnText = submitBtn.querySelector('.btn-text');
     const btnSpinner = submitBtn.querySelector('.btn-spinner');
-
+    
     // Get form data
     const formData = new FormData(document.getElementById('review-form'));
     const reviewData = {
@@ -1532,7 +1863,7 @@ class StoreManager {
 
     // Validate required fields
     if (!reviewData.customer_name || !reviewData.customer_email || !reviewData.rating) {
-      alert('Please fill in all required fields and select a rating.');
+      alert('Please fill in all required fields.');
       return;
     }
 
@@ -1550,23 +1881,25 @@ class StoreManager {
         body: JSON.stringify(reviewData)
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (!response.ok || data.error) {
-        throw new Error(data.error || 'Failed to submit review');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit review');
       }
 
-      // Success
-      alert('Thank you for your review! It has been submitted successfully.');
+      // Hide the write review modal
       this.hideWriteReviewModal();
       
-      // Reload reviews to show the new one
+      // Show success modal instead of browser alert
+      this.showReviewSuccessModal();
+      
+      // Refresh reviews list - reset offset to avoid duplicates
       this.reviewsOffset = 0;
       await this.loadReviews(true);
 
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert(`Error submitting review: ${error.message}`);
+      this.showReviewErrorModal(error.message);
     } finally {
       // Reset button state
       submitBtn.disabled = false;
@@ -1576,11 +1909,152 @@ class StoreManager {
   }
 
   /**
+   * Show review success modal
+   */
+  showReviewSuccessModal() {
+    // Remove any existing modal
+    this.removeReviewSuccessModal();
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'review-success-modal';
+    modal.innerHTML = `
+      <div class="review-success-backdrop">
+        <div class="review-success-content">
+          <div class="success-animation">
+            <div class="success-checkmark">
+              <div class="check-icon">
+                <span class="icon-line line-tip"></span>
+                <span class="icon-line line-long"></span>
+                <div class="icon-circle"></div>
+                <div class="icon-fix"></div>
+              </div>
+            </div>
+          </div>
+          <div class="success-text">
+            <h3>Review Submitted Successfully!</h3>
+            <p>Thank you for sharing your feedback. Your review helps other customers make informed decisions.</p>
+          </div>
+          <button class="success-close-btn" onclick="storeManager.removeReviewSuccessModal()">
+            <i class="fas fa-check"></i> Close
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    setTimeout(() => {
+      modal.classList.add('show');
+    }, 100);
+    
+    // Auto close after 4 seconds
+    setTimeout(() => {
+      this.removeReviewSuccessModal();
+    }, 4000);
+  }
+
+  /**
+   * Show review error modal
+   */
+  showReviewErrorModal(errorMessage) {
+    // Remove any existing modal
+    this.removeReviewSuccessModal();
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'review-success-modal';
+    modal.innerHTML = `
+      <div class="review-success-backdrop">
+        <div class="review-success-content error">
+          <div class="error-animation">
+            <div class="error-icon">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+          </div>
+          <div class="success-text">
+            <h3>Review Submission Failed</h3>
+            <p>${errorMessage}</p>
+          </div>
+          <button class="success-close-btn error" onclick="storeManager.removeReviewSuccessModal()">
+            <i class="fas fa-times"></i> Close
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // Animate in
+    setTimeout(() => {
+      modal.classList.add('show');
+    }, 100);
+  }
+
+  /**
+   * Remove review success/error modal
+   */
+  removeReviewSuccessModal() {
+    const modal = document.getElementById('review-success-modal');
+    if (modal) {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+  }
+
+  /**
    * Hide write review modal
    */
   hideWriteReviewModal() {
     const modal = document.getElementById('write-review-modal');
     modal.classList.remove('show');
+  }
+
+  /**
+   * Generate a user identifier for anonymous voting
+   */
+  generateUserIdentifier() {
+    // Try to get from localStorage first
+    let identifier = localStorage.getItem('stepitup_user_id');
+    
+    if (!identifier) {
+      // Generate a new identifier based on browser characteristics
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '14px Arial';
+      ctx.fillText('Anonymous user identifier', 2, 2);
+      
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width + 'x' + screen.height,
+        new Date().getTimezoneOffset(),
+        canvas.toDataURL()
+      ].join('|');
+      
+      // Create a simple hash
+      identifier = this.hashString(fingerprint).toString(36);
+      localStorage.setItem('stepitup_user_id', identifier);
+    }
+    
+    return identifier;
+  }
+
+  /**
+   * Simple hash function for generating user identifier
+   */
+  hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
   }
 }
 

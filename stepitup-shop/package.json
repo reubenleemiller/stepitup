@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "dependencies": {
     "@supabase/supabase-js": "^2.43.5",
-    "@upstash/redis": "^1.35.0",
     "axios": "^1.6.8",
     "busboy": "^1.6.0",
     "form-data": "^4.0.0",
-    "node-fetch": "^3.3.2",
-    "resend": "^4.6.0",
+    "formidable": "^3.5.4",
+    "jsonwebtoken": "^9.0.0",
     "jszip": "^3.10.1",
+    "lambda-multipart-parser": "^1.0.1",
+    "node-fetch": "^3.3.2",
     "pdfkit": "^0.15.0",
-    "stripe": "^18.2.1"
+    "resend": "^4.6.0",
+    "stripe": "^18.2.1",
+    "uuid": "^9.0.0"
   }
 }

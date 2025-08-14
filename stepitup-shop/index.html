@@ -33,13 +33,13 @@
 <button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
 <nav id="nav-menu">
 <ul>
-<li><a href="https://stepituplearning.ca">Home</a></li>
+<li><a href="../index.html">Home</a></li>
 <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
 <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
-<li><a href="https://stepituplearning.ca/pages/extras.html">Extras</a></li>
-<li><a href="https://stepituplearning.ca/pages/reviews.html">Reviews</a></li>
-<li><a href="https://stepituplearning.ca/pages/about.html">About</a></li>
-<li><a href="https://stepituplearning.ca/pages/contact.html">Contact</a></li>
+<li><a href="extras.html">Extras</a></li>
+<li><a href="reviews.html">Reviews</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="contact.html">Contact</a></li>
 </ul>
 </nav>
 </header>
@@ -108,6 +108,15 @@
     </div>
     
     <div id="products-section" style="display: none;">
+      <!-- Featured Products Banner -->
+      <div id="featured-banner" class="featured-banner" style="display: none;">
+        <div class="banner-header">
+          <h2><i class="fas fa-star"></i> Featured Resources</h2>
+          <p>Hand-picked educational materials for exceptional learning</p>
+        </div>
+        <div id="featured-products" class="featured-products-grid"></div>
+      </div>
+      
       <div class="products-filter">
         <div class="filter-options">
           <button class="filter-btn active" data-category="all">
@@ -383,7 +392,7 @@
 <footer class="footer-flex">
 <div class="footer-links">
 <p>© 2025 Step it Up Learning</p>
-<a href="https://stepituplearning.ca/index.html">Home</a>
+<a href="https://stepituplearning.ca">Home</a>
 <a href="https://stepituplearning.ca/pages/about.html">About</a>
 <a href="https://stepituplearning.ca/pages/terms-of-service.html">Terms Of Service</a>
 <a href="https://stepituplearning.ca/pages/privacy-policy.html">Privacy Policy</a>

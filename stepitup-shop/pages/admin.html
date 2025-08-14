@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Step it Up Learning</title>
+    <meta name="description" content="Admin panel for managing Step it Up Learning products">
+    <link rel="stylesheet" href="../assets/admin.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="login-modal show">
+        <div class="login-backdrop">
+            <div class="login-content">
+                <div class="login-header">
+                    <h2><i class="fas fa-shield-alt"></i> Admin Access</h2>
+                    <p>Enter your credentials to access the admin panel</p>
+                </div>
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="username">
+                            <i class="fas fa-user"></i>
+                            Username
+                        </label>
+                        <input type="text" id="username" name="username" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">
+                            <i class="fas fa-lock"></i>
+                            Password
+                        </label>
+                        <input type="password" id="password" name="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="login-btn">
+                        <span class="btn-text">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </span>
+                        <span class="btn-spinner" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                    <div id="login-error" class="login-error"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Admin Panel -->
+    <div id="admin-panel" class="admin-panel">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1><i class="fas fa-tachometer-alt"></i> Admin Panel</h1>
+                    <p>Step it Up Learning - Product Management</p>
+                </div>
+                <div class="header-right">
+                    <button onclick="adminManager.cancelEdit()" class="cancel-edit-btn" id="cancel-edit-btn" style="display: none;">
+                        <i class="fas fa-times"></i> Cancel Edit
+                    </button>
+                    <button id="logout-btn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <div class="admin-container">
+                <!-- Upload Form -->
+                <div class="upload-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-cloud-upload-alt"></i> Upload New Product</h2>
+                        <p>Add a new educational resource to the store</p>
+                    </div>
+
+                    <form id="product-form" class="product-form">
+                        <!-- Product Details -->
+                        <div class="form-section">
+                            <h3><i class="fas fa-info-circle"></i> Product Information</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="product-name">
+                                        Product Name <span class="required">*</span>
+                                    </label>
+                                    <input type="text" id="product-name" name="name" required 
+                                           placeholder="Enter product name">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="product-category">
+                                        Category <span class="required">*</span>
+                                    </label>
+                                    <select id="product-category" name="category" required>
+                                        <option value="">Select a category</option>
+                                        <option value="worksheets">Worksheets</option>
+                                        <option value="guides">Guides</option>
+                                        <option value="templates">Templates</option>
+                                        <option value="exercises">Exercises</option>
+                                        <option value="assessments">Assessments</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="product-price">
+                                        Price (CAD) <span class="required">*</span>
+                                    </label>
+                                    <div class="price-input">
+                                        <span class="price-symbol">CAD$</span>
+                                        <input type="text" id="product-price" name="price" 
+                                               pattern="[0-9]+(\.[0-9]{1,2})?" min="0" required placeholder="0.00" 
+                                               title="Enter a valid price (e.g., 10.99)">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="product-featured" name="featured">
+                                        <span class="checkbox-custom"></span>
+                                        Mark as Featured
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="product-description">
+                                    Description
+                                </label>
+                                <textarea id="product-description" name="description" rows="4"
+                                          placeholder="Enter product description"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- File Uploads -->
+                        <div class="form-section">
+                            <h3><i class="fas fa-file-upload"></i> File Uploads</h3>
+                            <p class="edit-note" id="edit-note" style="display: none;">
+                                <i class="fas fa-info-circle"></i>
+                                Leave files empty to keep existing files, or upload new files to replace them.
+                            </p>
+                            
+                            <div class="upload-grid">
+                                <!-- Main Product File -->
+                                <div class="upload-area fixed-size">
+                                    <div class="upload-header">
+                                        <h4><i class="fas fa-file"></i> Main Product File</h4>
+                                        <span class="required" id="product-file-required">Required</span>
+                                        <span class="optional" id="product-file-optional" style="display: none;">Optional</span>
+                                    </div>
+                                    <div class="file-drop-zone" data-upload-type="product">
+                                        <div class="drop-zone-content">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <p>Drop your file here or <span class="browse-link">browse</span></p>
+                                            <small>PDF, DOC, DOCX, ZIP files up to 50MB</small>
+                                        </div>
+                                        <input type="file" id="product-file" name="product-file" 
+                                               accept=".pdf,.doc,.docx,.zip" required>
+                                        <div class="upload-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill"></div>
+                                            </div>
+                                            <div class="progress-text">0%</div>
+                                        </div>
+                                        <div class="file-info"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Preview File -->
+                                <div class="upload-area fixed-size">
+                                    <div class="upload-header">
+                                        <h4><i class="fas fa-eye"></i> Preview File</h4>
+                                        <span class="optional">Optional</span>
+                                    </div>
+                                    <div class="file-drop-zone" data-upload-type="preview">
+                                        <div class="drop-zone-content">
+                                            <i class="fas fa-image"></i>
+                                            <p>Drop preview file here or <span class="browse-link">browse</span></p>
+                                            <small>PDF, Images up to 10MB</small>
+                                        </div>
+                                        <input type="file" id="preview-file" name="preview-file" 
+                                               accept=".pdf,.jpg,.jpeg,.png,.gif">
+                                        <div class="upload-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill"></div>
+                                            </div>
+                                            <div class="progress-text">0%</div>
+                                        </div>
+                                        <div class="file-info"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- New Image Upload Sections -->
+                            <div class="upload-grid">
+                                <!-- Resource Images -->
+                                <div class="upload-area fixed-size">
+                                    <div class="upload-header">
+                                        <h4><i class="fas fa-images"></i> Resource Images</h4>
+                                        <span class="optional">Optional</span>
+                                    </div>
+                                    <div class="file-drop-zone" data-upload-type="resource-images">
+                                        <div class="drop-zone-content">
+                                            <i class="fas fa-images"></i>
+                                            <p>Drop resource images here or <span class="browse-link">browse</span></p>
+                                            <small>JPG, PNG, GIF files up to 5MB each</small>
+                                        </div>
+                                        <input type="file" id="resource-images" name="resource-images" 
+                                               accept=".jpg,.jpeg,.png,.gif" multiple>
+                                        <div class="upload-progress">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill"></div>
+                                            </div>
+                                            <div class="progress-text">0%</div>
+                                        </div>
+                                        <div class="file-info"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Section -->
+                        <div class="form-section">
+                            <div class="submit-section">
+                                <button type="submit" class="submit-btn fixed-size">
+                                    <span class="btn-text">
+                                        <i class="fas fa-plus"></i> Create Product
+                                    </span>
+                                    <span class="btn-spinner enhanced-spinner" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i> Processing...
+                                    </span>
+                                </button>
+                                <p class="submit-note">
+                                    <i class="fas fa-info-circle"></i>
+                                    Make sure all information is correct before submitting
+                                </p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Manage Products Section -->
+                <div class="manage-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-cog"></i> Manage Products</h2>
+                        <p>View, edit, and delete existing products</p>
+                    </div>
+
+                    <div class="manage-content">
+                        <div class="manage-controls">
+                            <button id="refresh-products" class="control-btn">
+                                <i class="fas fa-refresh"></i> Refresh
+                            </button>
+                            <div class="search-box">
+                                <input type="text" id="product-search" placeholder="Search products...">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+
+                        <div id="products-loading" class="products-loading" style="display: none;">
+                            <div class="products-spinner"></div>
+                            <p>Loading products...</p>
+                        </div>
+
+                        <div id="products-grid" class="products-grid"></div>
+
+                        <div id="no-products" class="no-products-message" style="display: none;">
+                            <i class="fas fa-box-open"></i>
+                            <h3>No Products Found</h3>
+                            <p>Create your first product using the upload form above.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="success-modal">
+        <div class="modal-backdrop">
+            <div class="modal-content">
+                <div class="success-animation">
+                    <div class="success-checkmark">
+                        <div class="check-icon">
+                            <span class="icon-line line-tip"></span>
+                            <span class="icon-line line-long"></span>
+                            <div class="icon-circle"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-text">
+                    <h3>Product Created Successfully!</h3>
+                    <p>Your product has been uploaded and is now available in the store.</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" onclick="adminManager.closeSuccessModal()">
+                        Create Another
+                    </button>
+                    <a href="store.html" class="modal-btn primary">
+                        <i class="fas fa-store"></i> View Store
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="error-modal">
+        <div class="modal-backdrop">
+            <div class="modal-content error">
+                <div class="error-animation">
+                    <div class="error-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div class="modal-text">
+                    <h3>Upload Failed</h3>
+                    <p id="error-message">An error occurred while uploading your product.</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn primary" onclick="adminManager.closeErrorModal()">
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Success Modal -->
+    <div id="delete-success-modal" class="success-modal">
+        <div class="modal-backdrop">
+            <div class="modal-content">
+                <div class="success-animation">
+                    <div class="success-checkmark">
+                        <div class="check-icon">
+                            <span class="icon-line line-tip"></span>
+                            <span class="icon-line line-long"></span>
+                            <div class="icon-circle"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-text">
+                    <h3>Product Deleted Successfully!</h3>
+                    <p>The product and all associated data has been removed from the store.</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn primary" onclick="adminManager.closeDeleteSuccessModal()">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../scripts/admin.js"></script>
+    
+    <script>
+    // Enhanced form handling for edit mode
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update UI when editing mode changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    const isEditing = adminManager && adminManager.currentEditingProduct;
+                    const cancelBtn = document.getElementById('cancel-edit-btn');
+                    const editNote = document.getElementById('edit-note');
+                    const productFileRequired = document.getElementById('product-file-required');
+                    const productFileOptional = document.getElementById('product-file-optional');
+                    const productFileInput = document.getElementById('product-file');
+                    
+                    if (cancelBtn) {
+                        cancelBtn.style.display = isEditing ? 'flex' : 'none';
+                    }
+                    
+                    if (editNote) {
+                        editNote.style.display = isEditing ? 'block' : 'none';
+                    }
+                    
+                    // Make product file optional when editing
+                    if (productFileRequired && productFileOptional && productFileInput) {
+                        if (isEditing) {
+                            productFileRequired.style.display = 'none';
+                            productFileOptional.style.display = 'inline';
+                            productFileInput.removeAttribute('required');
+                        } else {
+                            productFileRequired.style.display = 'inline';
+                            productFileOptional.style.display = 'none';
+                            productFileInput.setAttribute('required', 'required');
+                        }
+                    }
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    });
+    </script>
+</body>
+</html>

@@ -115,7 +115,7 @@ exports.handler = async function(event, context) {
 
         // Record the purchase with actual amount paid (with idempotency check)
         try {
-          await db.addPurchase(session_id, email, productId, amountPaid, session.currency || 'usd');
+          await db.addPurchase(session_id, email, productId, amountPaid, session.currency || 'cad');
         } catch (e) {
           // Ignore duplicate errors - purchase already recorded
           console.log('Purchase already recorded or error:', e.message);
@@ -200,7 +200,7 @@ exports.handler = async function(event, context) {
         const invoiceItem = await stripe.invoiceItems.create({
           customer: customerId,
           amount: itemAmount,
-          currency: session.currency || 'usd',
+          currency: session.currency || 'cad',
           description: product.name,
           metadata: {
             product_id: product.id.toString(),
@@ -559,11 +559,11 @@ exports.handler = async function(event, context) {
             const line2 = fullOrderId.substring(30);
             doc.text(`Order: ${line1}`, rightStartX, 170, { width: rightColumnWidth, align: 'right' });
             doc.text(`${line2}`, rightStartX, 190, { width: rightColumnWidth, align: 'right' });
-            doc.text(`Currency: ${(session.currency || 'usd').toUpperCase()}`, rightStartX, 210, { width: rightColumnWidth, align: 'right' });
+            doc.text(`Currency: ${(session.currency || 'cad').toUpperCase()}`, rightStartX, 210, { width: rightColumnWidth, align: 'right' });
             doc.fontSize(10).fillColor(green).text('PAID', rightStartX, 235, { width: rightColumnWidth, align: 'right' });
           } else {
             doc.text(`Order: ${fullOrderId}`, rightStartX, 170, { width: rightColumnWidth, align: 'right' });
-            doc.text(`Currency: ${(session.currency || 'usd').toUpperCase()}`, rightStartX, 190, { width: rightColumnWidth, align: 'right' });
+            doc.text(`Currency: ${(session.currency || 'cad').toUpperCase()}`, rightStartX, 190, { width: rightColumnWidth, align: 'right' });
             doc.fontSize(10).fillColor(green).text('PAID', rightStartX, 215, { width: rightColumnWidth, align: 'right' });
           }
 

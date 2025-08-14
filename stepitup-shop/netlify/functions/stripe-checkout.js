@@ -74,7 +74,7 @@ exports.handler = async function(event, context) {
     const lineItems = cart.map(item => {
       const lineItem = {
         price_data: {
-          currency: 'usd',
+          currency: 'cad',
           product_data: {
             name: item.name,
             description: item.description || 'Educational resource from Step it Up Learning',
