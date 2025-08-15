@@ -99,7 +99,7 @@ exports.handler = async (event, context) => {
         description: productData.description?.trim() || null,
         price: Math.round(productData.price),
         category: productData.category,
-        featured: productData.featured || false,
+        featured: Boolean(productData.featured),
         resource_path: productFileName,
         image_url: imageUrl, // Link the first resource image to the product
         created_at: new Date().toISOString(),

@@ -1242,6 +1242,11 @@ body {
   line-height: 1.5;
   margin-bottom: 1.5rem;
   font-size: 0.9rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .product-manage-actions {
@@ -1547,4 +1552,235 @@ body {
 .product-card.featured-product .product-image {
   position: relative;
   overflow: hidden;
+}
+
+/* ==========================================
+   TEXT FORMATTING TOOLBAR STYLES
+   ========================================== */
+
+.formatting-toolbar {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toolbar-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.toolbar-btn:hover {
+  background: #f0f8ff;
+  border-color: #2c77cc;
+  color: #2c77cc;
+  transform: translateY(-1px);
+}
+
+.toolbar-btn.active {
+  background: #2c77cc;
+  border-color: #2c77cc;
+  color: white;
+  box-shadow: 0 2px 4px rgba(44, 119, 204, 0.3);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #d1d5db;
+  margin: 0 0.25rem;
+}
+
+.formatting-toolbar + textarea {
+  border-radius: 0 0 10px 10px;
+  border-top: none;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.formatting-help {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #1e5bb3;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.4;
+}
+
+.formatting-help i {
+  color: #2c77cc;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+/* Rich Text Preview Styles */
+.description-preview {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  background: white;
+  min-height: 120px;
+  max-height: 300px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #2d3748;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.description-preview h1,
+.description-preview h2,
+.description-preview h3,
+.description-preview h4,
+.description-preview h5,
+.description-preview h6 {
+  color: #2d3748;
+  margin: 1rem 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.description-preview h1 {
+  font-size: 1.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.description-preview h2 {
+  font-size: 1.3rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.description-preview h3 {
+  font-size: 1.1rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.description-preview p,
+.description-preview div,
+.description-preview span,
+.description-preview strong,
+.description-preview em,
+.description-preview u,
+.description-preview li {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.description-preview .preview-content {
+  width: 100%;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.description-preview p {
+  margin: 0.75rem 0;
+}
+
+.description-preview ul,
+.description-preview ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.description-preview li {
+  margin: 0.25rem 0;
+}
+
+.description-preview strong {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.description-preview em {
+  font-style: italic;
+  color: #2c77cc;
+}
+
+.description-preview u {
+  text-decoration: underline;
+  color: #2d3748;
+}
+
+.description-preview a {
+  color: #2c77cc;
+  text-decoration: underline;
+}
+
+.description-preview a:hover {
+  color: #1e5bb3;
+}
+
+/* Responsive Toolbar */
+@media (max-width: 768px) {
+  .formatting-toolbar {
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .toolbar-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  .formatting-help {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .formatting-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-group {
+    justify-content: center;
+  }
+
+  .toolbar-separator {
+    display: none;
+  }
 }

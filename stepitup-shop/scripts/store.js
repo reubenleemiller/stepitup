@@ -3,6 +3,25 @@
  * Handles product display, cart functionality, file previews, reviews, and checkout process
  */
 
+// Protection against external interference causing CSS/JSX syntax errors
+try {
+  // Detect and prevent React/JSX interference
+  if (typeof window !== 'undefined') {
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+      const message = args.join(' ');
+      // Filter out malformed CSS errors caused by browser extensions
+      if (message.includes('css="{{') || message.includes('animationduration') || message.includes('import { RawImg }')) {
+        console.warn('⚠️ Filtered malformed CSS error (likely browser extension interference):', message.substring(0, 100) + '...');
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
+  }
+} catch (e) {
+  console.warn('Error setting up CSS error protection:', e);
+}
+
 class StoreManager {
   constructor() {
     this.cart = this.loadCart();
@@ -12,6 +31,7 @@ class StoreManager {
     this.currentProductForReview = null;
     this.reviewsOffset = 0;
     this.reviewsLimit = 10;
+    this.isLoadingProducts = false;
     this.init();
   }
 
@@ -64,6 +84,17 @@ class StoreManager {
    * Load products from Netlify function
    */
   async loadProducts() {
+    // Debug: Track when loadProducts is called
+    console.log('🔄 loadProducts called at:', new Date().toISOString());
+    console.trace('loadProducts call stack');
+
+    // Prevent multiple simultaneous calls
+    if (this.isLoadingProducts) {
+      console.log('⚠️ loadProducts already in progress, skipping...');
+      return;
+    }
+    this.isLoadingProducts = true;
+
     try {
       const response = await fetch('/.netlify/functions/get-products', {
         method: 'GET',
@@ -84,17 +115,52 @@ class StoreManager {
 
       this.products = Array.isArray(data) ? data : [];
       console.log('Loaded products:', this.products);
-      
+
+      // Check for any external script interference
+      console.log('🔍 Checking for external script interference...');
+      const suspiciousKeys = Object.keys(window).filter(k =>
+        k.includes('React') || k.includes('react') || k.includes('jsx') || k.includes('babel')
+      );
+      console.log('Window keys with React/JSX:', suspiciousKeys);
+
+      // Detect if browser extensions are causing interference
+      if (suspiciousKeys.length > 0) {
+        console.warn('⚠️ Potential React/JSX interference detected. This may be caused by browser extensions or build tools.');
+        console.warn('💡 If you see malformed CSS errors, try disabling browser extensions or using incognito mode.');
+      }
+
+      // Debug all products data
+      console.log('=== ALL PRODUCTS DEBUG ===');
+      this.products.forEach((product, index) => {
+        console.log(`Product ${index + 1}:`, {
+          id: product.id,
+          name: product.name,
+          featured: product.featured,
+          featuredType: typeof product.featured,
+          price: product.price,
+          category: product.category
+        });
+      });
+
       // Debug featured products
       const featuredProducts = this.products.filter(product => {
-        console.log(`Product: ${product.name}, Featured: ${product.featured}, Type: ${typeof product.featured}`);
-        return product.featured === true || product.featured === 1 || product.featured === "true";
+        const isFeatured = product.featured === true ||
+                          product.featured === 1 ||
+                          product.featured === "true" ||
+                          product.featured === "1";
+        console.log(`Product: ${product.name}, Featured: ${product.featured}, Type: ${typeof product.featured}, Is Featured: ${isFeatured}`);
+        return isFeatured;
       });
-      console.log('Featured products found:', featuredProducts);
-      
+      console.log('=== FEATURED PRODUCTS RESULT ===');
+      console.log('Featured products found:', featuredProducts.length);
+      console.log('Featured products:', featuredProducts);
+
     } catch (error) {
       console.error('Error loading products:', error);
       throw error;
+    } finally {
+      this.isLoadingProducts = false;
+      console.log('✅ loadProducts completed, flag reset');
     }
   }
 
@@ -110,15 +176,24 @@ class StoreManager {
       return;
     }
 
-    // Render featured products banner first
-    this.renderFeaturedProducts();
+    // Featured products will be sorted first in the main list instead of a separate banner
 
     // Filter products by category
-    const filteredProducts = this.currentCategory === 'all' 
-      ? this.products 
-      : this.products.filter(product => 
+    let filteredProducts = this.currentCategory === 'all'
+      ? this.products
+      : this.products.filter(product =>
           product.category && product.category.toLowerCase() === this.currentCategory
         );
+
+    // Sort products so featured ones appear first
+    filteredProducts = filteredProducts.sort((a, b) => {
+      const aFeatured = a.featured === true || a.featured === 1 || a.featured === "true" || a.featured === "1";
+      const bFeatured = b.featured === true || b.featured === 1 || b.featured === "true" || b.featured === "1";
+
+      if (aFeatured && !bFeatured) return -1; // a comes first
+      if (!aFeatured && bFeatured) return 1;  // b comes first
+      return 0; // maintain original order for non-featured or both featured
+    });
 
     productsList.innerHTML = '';
     
@@ -147,27 +222,40 @@ class StoreManager {
    * Render featured products banner
    */
   renderFeaturedProducts() {
+    console.log('🌟 renderFeaturedProducts called');
     const featuredBanner = document.getElementById('featured-banner');
     const featuredGrid = document.getElementById('featured-products');
-    
+
+    console.log('Featured banner element:', featuredBanner);
+    console.log('Featured grid element:', featuredGrid);
+    console.log('Total products to check:', this.products.length);
+
+    if (!featuredBanner || !featuredGrid) {
+      console.error('❌ Featured banner or grid element not found!');
+      return;
+    }
+
     // Get featured products - check multiple ways a product might be marked as featured
     const featuredProducts = this.products.filter(product => {
-      const isFeatured = product.featured === true || 
-                        product.featured === 1 || 
+      const isFeatured = product.featured === true ||
+                        product.featured === 1 ||
                         product.featured === "true" ||
                         product.featured === "1";
-      
-      console.log(`Checking product: ${product.name}, featured value: ${product.featured}, is featured: ${isFeatured}`);
+
+      console.log(`🔍 Checking product: ${product.name}, featured value: ${product.featured} (${typeof product.featured}), is featured: ${isFeatured}`);
       return isFeatured;
     });
-    
-    console.log(`Total products: ${this.products.length}, Featured products found: ${featuredProducts.length}`);
-    
+
+    console.log(`📊 Total products: ${this.products.length}, Featured products found: ${featuredProducts.length}`);
+    console.log('📋 Featured products list:', featuredProducts);
+
     if (featuredProducts.length === 0) {
-      console.log('No featured products found, hiding banner');
+      console.log('❌ No featured products found, hiding banner');
       featuredBanner.style.display = 'none';
       return;
     }
+
+    console.log('✅ Featured products found! Showing banner...');
     
     console.log('Showing featured banner with products:', featuredProducts.map(p => p.name));
     featuredBanner.style.display = 'block';
@@ -192,10 +280,10 @@ class StoreManager {
     const productIcon = this.getProductIcon(category);
     
     // Handle product image
-    const imageSection = product.image_url 
+    const imageSection = product.image_url
       ? `<img src="${this.escapeHtml(product.image_url)}" alt="${this.escapeHtml(product.name)}" loading="lazy">`
       : `<div class="fallback-icon"><i class="${productIcon}"></i></div>`;
-    
+
     card.innerHTML = `
       <div class="product-image">
         ${imageSection}
@@ -211,7 +299,7 @@ class StoreManager {
           </div>
           <h3>${this.escapeHtml(product.name)}</h3>
         </div>
-        <p>${this.escapeHtml(product.description || 'Featured educational resource to support your learning journey.')}</p>
+        ${this.createProductDescription(product)}
         <div class="product-price">
           <span>${price}</span>
           <span class="price-badge featured">Featured</span>
@@ -251,6 +339,15 @@ class StoreManager {
       e.preventDefault();
       this.showReviewsModal(product);
     });
+
+    // Learn more button event listener
+    const learnMoreButton = card.querySelector('.learn-more-btn');
+    if (learnMoreButton) {
+      learnMoreButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showDescriptionModal(product);
+      });
+    }
 
     return card;
   }
@@ -298,14 +395,18 @@ class StoreManager {
     card.setAttribute('data-product-id', product.id);
     
     // Check if product is featured
-    const isFeatured = product.featured === true || 
-                      product.featured === 1 || 
-                      product.featured === "true" ||
-                      product.featured === "1";
-    
+    let isFeatured = product.featured === true ||
+                     product.featured === 1 ||
+                     product.featured === "true" ||
+                     product.featured === "1";
+
+
+    console.log(`🔍 Product ${product.name} (ID: ${product.id}): featured=${product.featured}, isFeatured=${isFeatured}`);
+
     if (isFeatured) {
+      console.log(`✨ Adding featured badge to product: ${product.name}`);
       card.setAttribute('data-featured', 'true');
-      card.classList.add('featured-product');
+      // Remove the featured-product class to avoid extra styling
     }
 
     const price = this.formatPrice(product.price);
@@ -317,16 +418,18 @@ class StoreManager {
       ? `<img src="${this.escapeHtml(product.image_url)}" alt="${this.escapeHtml(product.name)}" loading="lazy">`
       : `<div class="fallback-icon"><i class="${productIcon}"></i></div>`;
     
-    const featuredRibbon = isFeatured ? 
-      `<div class="featured-ribbon">
-        <i class="fas fa-star"></i>
-        <span>Featured</span>
+    const featuredBadge = isFeatured ?
+      `<div class="featured-badge" style="position: absolute; top: 8px; right: 8px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 4px; z-index: 10;">
+        <i class="fas fa-star" style="font-size: 0.7rem;"></i>
+        <span>FEATURED</span>
       </div>` : '';
-    
+
+    console.log(`🎯 Product ${product.name}: isFeatured=${isFeatured}, featuredBadge HTML length=${featuredBadge.length}`);
+
     card.innerHTML = `
       <div class="product-image">
         ${imageSection}
-        ${featuredRibbon}
+        ${featuredBadge}
       </div>
       <div class="product-content">
         <div class="product-title-row">
@@ -335,7 +438,7 @@ class StoreManager {
           </div>
           <h3>${this.escapeHtml(product.name)}</h3>
         </div>
-        <p>${this.escapeHtml(product.description || 'Educational resource to support your learning journey.')}</p>
+        ${this.createProductDescription(product)}
         <div class="product-price">
           <span>${price}</span>
           ${isFeatured ? '<span class="price-badge featured">Featured</span>' : ''}
@@ -375,6 +478,15 @@ class StoreManager {
       e.preventDefault();
       this.showReviewsModal(product);
     });
+
+    // Learn more button event listener
+    const learnMoreButton = card.querySelector('.learn-more-btn');
+    if (learnMoreButton) {
+      learnMoreButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showDescriptionModal(product);
+      });
+    }
 
     return card;
   }
@@ -936,6 +1048,7 @@ class StoreManager {
     this.setupPreviewModalListeners();
     this.setupReviewsModalListeners();
     this.setupWriteReviewModalListeners();
+    this.setupDescriptionModalListeners();
   }
 
   /**
@@ -1043,6 +1156,35 @@ class StoreManager {
 
     // Star rating functionality
     this.setupStarRating();
+  }
+
+  /**
+   * Setup description modal listeners
+   */
+  setupDescriptionModalListeners() {
+    const descriptionModal = document.getElementById('description-modal');
+    const closeDescriptionBtn = document.getElementById('close-description-modal');
+
+    if (closeDescriptionBtn) {
+      closeDescriptionBtn.addEventListener('click', () => {
+        this.hideDescriptionModal();
+      });
+    }
+
+    if (descriptionModal) {
+      descriptionModal.addEventListener('click', (e) => {
+        if (e.target === descriptionModal) {
+          this.hideDescriptionModal();
+        }
+      });
+    }
+
+    // ESC key to close modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && descriptionModal.classList.contains('show')) {
+        this.hideDescriptionModal();
+      }
+    });
   }
 
   /**
@@ -1267,6 +1409,118 @@ class StoreManager {
   }
 
   /**
+   * Create product description with truncation and learn more button
+   */
+  createProductDescription(product) {
+    const description = product.description || 'Educational resource to support your learning journey.';
+    const maxLength = 120;
+
+    if (description.length <= maxLength) {
+      return `<div class="product-description">${this.renderMarkdown(description)}</div>`;
+    }
+
+    const truncated = description.substring(0, maxLength).trim() + '...';
+
+    return `
+      <div class="product-description">
+        <div class="description-truncated">${this.renderMarkdown(truncated)}</div>
+        <button class="learn-more-btn" data-product-id="${product.id}">
+          <i class="fas fa-info-circle"></i> Learn More
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Simple markdown renderer for text formatting
+   */
+  renderMarkdown(text) {
+    if (!text) return '';
+
+    return text
+      // Headers
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Underline (using HTML tags)
+      .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      // Bullet points
+      .replace(/^• (.*$)/gim, '<li>$1</li>')
+      // Wrap lists
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+  }
+
+  /**
+   * Show product description modal
+   */
+  showDescriptionModal(product) {
+    const modal = document.getElementById('description-modal');
+    const modalTitle = document.getElementById('description-modal-title');
+    const categoryBadge = document.getElementById('description-product-category');
+    const priceDisplay = document.getElementById('description-product-price');
+    const descriptionContent = document.getElementById('description-content');
+    const addToCartBtn = document.getElementById('add-to-cart-from-modal');
+    const previewBtn = document.getElementById('preview-from-modal');
+    const reviewsBtn = document.getElementById('reviews-from-modal');
+
+    // Set modal content
+    modalTitle.textContent = product.name;
+    categoryBadge.textContent = product.category || 'Resource';
+    priceDisplay.textContent = this.formatPrice(product.price);
+
+    // Format description with basic markdown-like formatting
+    const formattedDescription = this.formatDescription(product.description || 'Educational resource to support your learning journey.');
+    descriptionContent.innerHTML = formattedDescription;
+
+    // Set up action buttons
+    addToCartBtn.onclick = () => {
+      this.addToCart(product);
+      this.showAddedFeedback(addToCartBtn);
+    };
+
+    previewBtn.onclick = () => {
+      this.hideDescriptionModal();
+      this.showPreviewModal(product);
+    };
+
+    reviewsBtn.onclick = () => {
+      this.hideDescriptionModal();
+      this.showReviewsModal(product);
+    };
+
+    // Show modal
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Hide product description modal
+   */
+  hideDescriptionModal() {
+    const modal = document.getElementById('description-modal');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  /**
+   * Format description text with basic formatting
+   */
+  formatDescription(description) {
+    if (!description) return '';
+
+    // Use markdown renderer for rich formatting
+    return this.renderMarkdown(description);
+  }
+
+  /**
    * Escape HTML to prevent XSS
    */
   escapeHtml(text) {
@@ -1288,14 +1542,80 @@ class StoreManager {
   // ==========================================
 
   /**
+   * Wait for modal elements to be available in DOM
+   */
+  async waitForModalElements() {
+    const maxAttempts = 50; // 5 seconds max
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const modal = document.getElementById('preview-modal');
+      const previewImages = document.getElementById('preview-images');
+      const previewPdf = document.getElementById('preview-pdf');
+      const previewVideo = document.getElementById('preview-video');
+
+      if (modal && previewImages && previewPdf && previewVideo) {
+        console.log('✅ All modal elements found after', attempts, 'attempts');
+        return true;
+      }
+
+      console.log('⏳ Waiting for modal elements... attempt', attempts + 1);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+
+    console.error('❌ Modal elements not found after', maxAttempts, 'attempts');
+    return false;
+  }
+
+  /**
    * Show preview modal for a product
    */
   async showPreviewModal(product) {
+    console.log('🎭 Opening preview modal for product:', product.id, product.name);
+
+    // Ensure DOM is ready and modal elements exist
+    if (document.readyState !== 'complete' && document.readyState !== 'interactive') {
+      console.warn('⚠️ DOM not ready, waiting...');
+      await new Promise(resolve => {
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          resolve();
+        } else {
+          document.addEventListener('DOMContentLoaded', resolve, { once: true });
+        }
+      });
+    }
+
+    // Wait for modal elements to be available
+    const elementsReady = await this.waitForModalElements();
+    if (!elementsReady) {
+      alert('Preview modal elements are not available. Please refresh the page.');
+      return;
+    }
+
     const modal = document.getElementById('preview-modal');
     const modalTitle = document.getElementById('preview-modal-title');
     const previewLoading = document.getElementById('preview-loading');
     const previewContent = document.getElementById('preview-content');
     const previewError = document.getElementById('preview-error');
+
+    // Check if all required elements exist
+    if (!modal || !modalTitle || !previewLoading || !previewContent || !previewError) {
+      console.error('❌ Preview modal elements not found in DOM');
+      console.log('🔍 Missing elements check:');
+      console.log('  modal:', !!modal);
+      console.log('  modalTitle:', !!modalTitle);
+      console.log('  previewLoading:', !!previewLoading);
+      console.log('  previewContent:', !!previewContent);
+      console.log('  previewError:', !!previewError);
+
+      // Try to find the modal in the DOM
+      const allModals = document.querySelectorAll('[id*="preview"]');
+      console.log('🔍 All elements with "preview" in ID:', allModals);
+
+      alert('Preview modal is not properly initialized. Please refresh the page.');
+      return;
+    }
 
     // Set title
     modalTitle.textContent = `${product.name} - Preview`;
@@ -1306,10 +1626,52 @@ class StoreManager {
     previewContent.style.display = 'none';
     previewError.style.display = 'none';
 
+    // Force clear any cached preview content
+    console.log('🧹 Clearing cached preview content...');
+
     try {
-      // Fetch previews for this product
-      const response = await fetch(`/.netlify/functions/get-previews?product_id=${product.id}`);
+      // Clear individual container contents but preserve the container elements themselves
+      const previewImages = document.getElementById('preview-images');
+      const previewPdf = document.getElementById('preview-pdf');
+      const previewVideo = document.getElementById('preview-video');
+
+      if (previewImages) {
+        previewImages.innerHTML = '';
+        console.log('�� Cleared preview-images content');
+      }
+      if (previewPdf) {
+        previewPdf.innerHTML = '';
+        console.log('✅ Cleared preview-pdf content');
+      }
+      if (previewVideo) {
+        previewVideo.innerHTML = '';
+        console.log('✅ Cleared preview-video content');
+      }
+
+      // DO NOT clear previewContent.innerHTML as it removes the container elements!
+
+      // Force fresh fetch with aggressive cache-busting techniques
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(7);
+      const cacheBuster = `${timestamp}_${random}`;
+      const response = await fetch(`/.netlify/functions/get-previews?product_id=${product.id}&_cb=${cacheBuster}&_t=${timestamp}&_r=${random}`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'If-Modified-Since': 'Mon, 26 Jul 1997 05:00:00 GMT',
+          'If-None-Match': '*',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      console.log('🔄 Preview fetch response status:', response.status);
+      console.log('🔄 Preview fetch headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
+      console.log('🔄 Preview data received:', data);
 
       if (!response.ok || data.error) {
         throw new Error(data.error || 'Failed to load previews');
@@ -1345,42 +1707,153 @@ class StoreManager {
    * Render preview content
    */
   renderPreviews(previews) {
-    const previewImages = document.getElementById('preview-images');
-    const previewPdf = document.getElementById('preview-pdf');
-    const previewVideo = document.getElementById('preview-video');
+    console.log('🔍 RENDER PREVIEWS CALLED - Attempting to find preview container elements...');
+    console.log('📊 Current DOM state:', document.readyState);
+    console.log('📊 Previews to render:', previews.length);
+
+    // First, let's check the entire modal structure
+    const modal = document.getElementById('preview-modal');
+    console.log('🎭 Preview modal element:', modal);
+
+    if (modal) {
+      console.log('🎭 Modal innerHTML length:', modal.innerHTML.length);
+      console.log('🎭 Modal display style:', getComputedStyle(modal).display);
+    }
+
+    // Check the preview content container
+    const previewContent = document.getElementById('preview-content');
+    console.log('📦 Preview Content container:', previewContent);
+
+    if (previewContent) {
+      console.log('📦 Preview Content innerHTML:', previewContent.innerHTML);
+      console.log('📦 Preview Content children count:', previewContent.children.length);
+      console.log('📦 Preview Content display style:', getComputedStyle(previewContent).display);
+
+      // List all children
+      Array.from(previewContent.children).forEach((child, index) => {
+        console.log(`  Child ${index}: ${child.tagName} with id="${child.id}" class="${child.className}"`);
+      });
+    }
+
+    // Now try to get the individual containers
+    let previewImages = document.getElementById('preview-images');
+    let previewPdf = document.getElementById('preview-pdf');
+    let previewVideo = document.getElementById('preview-video');
+
+    console.log('🖼️ Preview Images element:', previewImages);
+    console.log('📄 Preview PDF element:', previewPdf);
+    console.log('🎥 Preview Video element:', previewVideo);
+
+    // Check if they exist as children of previewContent
+    if (previewContent) {
+      const imagesChild = previewContent.querySelector('#preview-images');
+      const pdfChild = previewContent.querySelector('#preview-pdf');
+      const videoChild = previewContent.querySelector('#preview-video');
+
+      console.log('🔍 Found via querySelector:');
+      console.log('  Images:', imagesChild);
+      console.log('  PDF:', pdfChild);
+      console.log('  Video:', videoChild);
+    }
+
+    // Check if preview container elements exist, and recreate them if missing
+    if (!previewImages || !previewPdf || !previewVideo) {
+      console.warn('⚠️ Some preview container elements missing, attempting to recreate...');
+      console.log('📊 Missing elements check:');
+      console.log('  previewImages:', !!previewImages);
+      console.log('  previewPdf:', !!previewPdf);
+      console.log('  previewVideo:', !!previewVideo);
+
+      // Recreate missing elements in the previewContent container
+      if (previewContent) {
+        console.log('🔧 Recreating missing preview container elements...');
+
+        if (!previewImages) {
+          const imagesDiv = document.createElement('div');
+          imagesDiv.id = 'preview-images';
+          imagesDiv.className = 'preview-images';
+          previewContent.appendChild(imagesDiv);
+          console.log('✅ Created preview-images container');
+        }
+
+        if (!previewPdf) {
+          const pdfDiv = document.createElement('div');
+          pdfDiv.id = 'preview-pdf';
+          pdfDiv.className = 'preview-pdf';
+          previewContent.appendChild(pdfDiv);
+          console.log('✅ Created preview-pdf container');
+        }
+
+        if (!previewVideo) {
+          const videoDiv = document.createElement('div');
+          videoDiv.id = 'preview-video';
+          videoDiv.className = 'preview-video';
+          previewContent.appendChild(videoDiv);
+          console.log('✅ Created preview-video container');
+        }
+
+        // Re-get the elements after recreation
+        previewImages = document.getElementById('preview-images');
+        previewPdf = document.getElementById('preview-pdf');
+        previewVideo = document.getElementById('preview-video');
+
+        console.log('🔍 After recreation - Images:', !!previewImages, 'PDF:', !!previewPdf, 'Video:', !!previewVideo);
+
+        if (!previewImages || !previewPdf || !previewVideo) {
+          console.error('❌ Failed to recreate preview container elements');
+          return;
+        }
+      } else {
+        console.error('❌ Preview content container not found, cannot recreate elements');
+        return;
+      }
+    }
 
     // Clear previous content
     previewImages.innerHTML = '';
     previewPdf.innerHTML = '';
     previewVideo.innerHTML = '';
 
-    previews.forEach(preview => {
+    previews.forEach((preview, index) => {
+      const cacheBuster = Date.now() + Math.random() + index;
+      const forceRefresh = `&_refresh=${Date.now()}&_v=${Math.random()}`;
+
+      console.log(`📄 Rendering preview ${index + 1}:`, preview.preview_type, preview.preview_url);
+
       switch (preview.preview_type) {
         case 'image':
           const img = document.createElement('img');
-          img.src = preview.preview_url;
+          img.src = `${preview.preview_url}?_cb=${cacheBuster}${forceRefresh}`;
           img.alt = preview.description || 'Preview image';
           img.style.maxWidth = '100%';
           img.style.borderRadius = '8px';
           img.style.marginBottom = '1em';
-          img.loading = 'lazy';
+          img.loading = 'eager'; // Force immediate loading instead of lazy
+          img.onload = () => console.log('✅ Preview image loaded:', img.src);
+          img.onerror = () => console.error('❌ Preview image failed to load:', img.src);
           previewImages.appendChild(img);
           break;
 
         case 'pdf':
+          const pdfUrl = `${preview.preview_url}?_cb=${cacheBuster}${forceRefresh}`;
+          console.log('📄 Loading PDF URL:', pdfUrl);
           previewPdf.innerHTML = `
-            <iframe src="${preview.preview_url}" 
-                    width="100%" 
-                    height="500" 
-                    style="border: none; border-radius: 8px;">
+            <iframe src="${pdfUrl}"
+                    width="100%"
+                    height="500"
+                    style="border: none; border-radius: 8px;"
+                    onload="console.log('✅ PDF iframe loaded')"
+                    onerror="console.error('❌ PDF iframe failed to load')">
             </iframe>
           `;
           break;
 
         case 'video':
+          const videoUrl = `${preview.preview_url}?_cb=${cacheBuster}${forceRefresh}`;
+          console.log('🎥 Loading video URL:', videoUrl);
           previewVideo.innerHTML = `
-            <video controls style="width: 100%; border-radius: 8px;">
-              <source src="${preview.preview_url}" type="video/mp4">
+            <video controls style="width: 100%; border-radius: 8px;" preload="metadata">
+              <source src="${videoUrl}" type="video/mp4">
               Your browser does not support the video tag.
             </video>
           `;
@@ -2059,14 +2532,132 @@ class StoreManager {
 }
 
 // Initialize store when DOM is loaded
-let storeManager;
+// Initialize storeManager variable
+let storeManager = null;
+
+// Immediate test function to check DOM state
+function testDOMElements() {
+  console.log('🧪 IMMEDIATE DOM TEST - Document state:', document.readyState);
+
+  const requiredElements = [
+    'preview-modal', 'preview-modal-title', 'preview-loading',
+    'preview-content', 'preview-error', 'preview-images',
+    'preview-pdf', 'preview-video'
+  ];
+
+  console.log('🔍 Testing modal elements immediately:');
+  requiredElements.forEach(id => {
+    const element = document.getElementById(id);
+    console.log(`  ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
+    if (element) {
+      console.log(`    - Display: ${getComputedStyle(element).display}`);
+      console.log(`    - Visibility: ${getComputedStyle(element).visibility}`);
+      console.log(`    - Parent: ${element.parentElement ? element.parentElement.id || element.parentElement.tagName : 'none'}`);
+    }
+  });
+
+  // Check if the modal is being hidden by CSS
+  const modal = document.getElementById('preview-modal');
+  if (modal) {
+    const styles = getComputedStyle(modal);
+    console.log('🎭 Modal styles:', {
+      display: styles.display,
+      visibility: styles.visibility,
+      opacity: styles.opacity,
+      zIndex: styles.zIndex
+    });
+  }
+}
+
+// Run test immediately
+testDOMElements();
+
+// Add global test function for manual testing
+window.testPreviewElements = function() {
+  console.log('🧪 MANUAL TEST - Testing preview elements:');
+  testDOMElements();
+
+  // Try to create the elements if they don't exist
+  const previewContent = document.getElementById('preview-content');
+  if (previewContent && !document.getElementById('preview-images')) {
+    console.log('🔧 Attempting to recreate missing elements...');
+    previewContent.innerHTML = `
+      <div id="preview-images" class="preview-images"></div>
+      <div id="preview-pdf" class="preview-pdf"></div>
+      <div id="preview-video" class="preview-video"></div>
+    `;
+    console.log('✅ Elements recreated');
+    testDOMElements();
+  }
+};
+
+// Monitor changes to the preview modal
+function monitorPreviewModal() {
+  const previewModal = document.getElementById('preview-modal');
+  if (previewModal) {
+    console.log('👁️ Setting up MutationObserver for preview modal...');
+
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList') {
+          console.log('🔄 Preview modal children changed:', mutation);
+          if (mutation.removedNodes.length > 0) {
+            console.log('❌ Removed nodes:', mutation.removedNodes);
+          }
+          if (mutation.addedNodes.length > 0) {
+            console.log('✅ Added nodes:', mutation.addedNodes);
+          }
+        }
+        if (mutation.type === 'attributes') {
+          console.log('🔄 Preview modal attribute changed:', mutation.attributeName, 'to:', mutation.target.getAttribute(mutation.attributeName));
+        }
+      });
+    });
+
+    observer.observe(previewModal, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeOldValue: true
+    });
+
+    console.log('✅ MutationObserver set up for preview modal');
+  } else {
+    console.error('❌ Could not find preview modal to monitor');
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-  storeManager = new StoreManager();
-});
+  console.log('🚀 DOM loaded, initializing StoreManager...');
 
-// Make storeManager globally available for onclick handlers
-window.storeManager = storeManager;
+  // Run test again after DOM loaded
+  testDOMElements();
+
+  // Debug: Check if all required elements exist
+  const requiredElements = [
+    'preview-modal', 'preview-modal-title', 'preview-loading',
+    'preview-content', 'preview-error', 'preview-images',
+    'preview-pdf', 'preview-video'
+  ];
+
+  console.log('🔍 Checking required modal elements after DOMContentLoaded:');
+  requiredElements.forEach(id => {
+    const element = document.getElementById(id);
+    console.log(`  ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
+  });
+
+  // Start monitoring the preview modal
+  monitorPreviewModal();
+
+  try {
+    storeManager = new StoreManager();
+    // Make storeManager globally available for onclick handlers
+    window.storeManager = storeManager;
+    console.log('✅ StoreManager initialized successfully');
+  } catch (error) {
+    console.error('❌ Error initializing StoreManager:', error);
+  }
+});
 
 // Handle offline/online status
 window.addEventListener('online', () => {

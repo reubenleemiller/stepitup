@@ -108,8 +108,8 @@
     </div>
     
     <div id="products-section" style="display: none;">
-      <!-- Featured Products Banner -->
-      <div id="featured-banner" class="featured-banner" style="display: none;">
+      <!-- Featured Products Banner - DISABLED -->
+      <div id="featured-banner" class="featured-banner" style="display: none !important;">
         <div class="banner-header">
           <h2><i class="fas fa-star"></i> Featured Resources</h2>
           <p>Hand-picked educational materials for exceptional learning</p>
@@ -319,6 +319,42 @@
         <button id="write-review-btn" class="write-review-btn">
           <i class="fas fa-edit"></i> Write a Review
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Description Modal -->
+  <div id="description-modal" class="description-modal">
+    <div class="description-modal-content">
+      <div class="description-modal-header">
+        <h3 id="description-modal-title">Product Details</h3>
+        <button id="close-description-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="description-modal-body">
+        <div class="product-details">
+          <div class="product-meta">
+            <span id="description-product-category" class="product-category-badge"></span>
+            <span id="description-product-price" class="product-price-display"></span>
+          </div>
+          <div id="description-content" class="description-content"></div>
+        </div>
+      </div>
+
+      <div class="description-modal-footer">
+        <button id="add-to-cart-from-modal" class="add-to-cart-modal-btn">
+          <i class="fas fa-shopping-cart"></i> Add to Cart
+        </button>
+        <div class="modal-secondary-actions">
+          <button id="preview-from-modal" class="modal-action-btn">
+            <i class="fas fa-eye"></i> Preview
+          </button>
+          <button id="reviews-from-modal" class="modal-action-btn">
+            <i class="fas fa-star"></i> Reviews
+          </button>
+        </div>
       </div>
     </div>
   </div>

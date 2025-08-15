@@ -105,7 +105,7 @@ exports.handler = async (event, context) => {
 
       // Delete files from storage - with proper error handling and path correction
       const filesToDelete = [];
-      
+
       // Add main product file
       if (productData.resource_path) {
         filesToDelete.push({
@@ -114,35 +114,59 @@ exports.handler = async (event, context) => {
         });
       }
 
-      // Delete ALL preview files for this product (not just in subfolders)
+      // Also check for product files in the products folder
       try {
-        // Try multiple possible paths for preview files
-        const previewPaths = [
-          `previews/${product_id}`,
-          `preview/${product_id}`, 
-          `${product_id}`,
-          ''
-        ];
+        console.log(`Searching for additional product files for product ${product_id}`);
+        const { data: productFiles } = await supabase.storage
+          .from('paid-resources')
+          .list(`products/${product_id}`);
 
-        for (const basePath of previewPaths) {
-          try {
-            const { data: previewFiles } = await supabase.storage
+        if (productFiles && productFiles.length > 0) {
+          console.log(`Found ${productFiles.length} additional product files`);
+          productFiles.forEach(file => {
+            if (file.name && !file.name.includes('.folder')) {
+              filesToDelete.push({
+                bucket: 'paid-resources',
+                path: `products/${product_id}/${file.name}`
+              });
+            }
+          });
+        }
+      } catch (productListError) {
+        console.warn('Error listing product files for deletion:', productListError);
+      }
+
+      // Delete ALL preview files for this product
+      try {
+        console.log(`Searching for preview files for product ${product_id}`);
+        const { data: allPreviewFiles } = await supabase.storage
+          .from('resource-previews')
+          .list('previews', { limit: 1000 });
+
+        if (allPreviewFiles) {
+          // Look for folders matching the product ID
+          const productFolders = allPreviewFiles.filter(item =>
+            item.name === product_id.toString() && item.id === null
+          );
+
+          console.log(`Found ${productFolders.length} preview folders for product ${product_id}`);
+
+          // For each folder, get all files inside
+          for (const folder of productFolders) {
+            const { data: folderFiles } = await supabase.storage
               .from('resource-previews')
-              .list(basePath);
-            
-            if (previewFiles && previewFiles.length > 0) {
-              previewFiles.forEach(file => {
+              .list(`previews/${folder.name}`);
+
+            if (folderFiles) {
+              folderFiles.forEach(file => {
                 if (file.name && !file.name.includes('.folder')) {
-                  const fullPath = basePath ? `${basePath}/${file.name}` : file.name;
                   filesToDelete.push({
                     bucket: 'resource-previews',
-                    path: fullPath
+                    path: `previews/${folder.name}/${file.name}`
                   });
                 }
               });
             }
-          } catch (listError) {
-            console.log(`No files found in path ${basePath}:`, listError.message);
           }
         }
       } catch (previewListError) {
@@ -151,32 +175,35 @@ exports.handler = async (event, context) => {
 
       // Delete ALL resource images for this product
       try {
-        const imagePaths = [
-          `resource-images/${product_id}`,
-          `images/${product_id}`,
-          `${product_id}`,
-          ''
-        ];
+        console.log(`Searching for resource images for product ${product_id}`);
+        const { data: allImageFiles } = await supabase.storage
+          .from('resource-images')
+          .list('resource-images', { limit: 1000 });
 
-        for (const basePath of imagePaths) {
-          try {
-            const { data: imageFiles } = await supabase.storage
+        if (allImageFiles) {
+          // Look for folders matching the product ID
+          const productFolders = allImageFiles.filter(item =>
+            item.name === product_id.toString() && item.id === null
+          );
+
+          console.log(`Found ${productFolders.length} image folders for product ${product_id}`);
+
+          // For each folder, get all files inside
+          for (const folder of productFolders) {
+            const { data: folderFiles } = await supabase.storage
               .from('resource-images')
-              .list(basePath);
-            
-            if (imageFiles && imageFiles.length > 0) {
-              imageFiles.forEach(file => {
+              .list(`resource-images/${folder.name}`);
+
+            if (folderFiles) {
+              folderFiles.forEach(file => {
                 if (file.name && !file.name.includes('.folder')) {
-                  const fullPath = basePath ? `${basePath}/${file.name}` : file.name;
                   filesToDelete.push({
                     bucket: 'resource-images',
-                    path: fullPath
+                    path: `resource-images/${folder.name}/${file.name}`
                   });
                 }
               });
             }
-          } catch (listError) {
-            console.log(`No files found in path ${basePath}:`, listError.message);
           }
         }
       } catch (imageListError) {

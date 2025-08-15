@@ -6,6 +6,7 @@
 class AdminManager {
   constructor() {
     this.isAuthenticated = false;
+    this.isSubmitting = false;
     this.uploadedFiles = {
       product: null,
       preview: null,
@@ -61,6 +62,9 @@ class AdminManager {
     // Product form
     const productForm = document.getElementById('product-form');
     if (productForm) {
+      // Remove any existing listeners to prevent duplicates
+      productForm.removeEventListener('submit', this.handleProductSubmission);
+      // Add the event listener
       productForm.addEventListener('submit', this.handleProductSubmission.bind(this));
     }
 
@@ -84,6 +88,9 @@ class AdminManager {
 
     // Form validation
     this.setupFormValidation();
+
+    // Text formatting toolbar
+    this.setupFormattingToolbar();
   }
 
   /**
@@ -504,7 +511,19 @@ class AdminManager {
   async handleProductSubmission(e) {
     e.preventDefault();
 
-    if (!this.validateForm()) {
+    console.log('handleProductSubmission called, isSubmitting:', this.isSubmitting);
+
+    // Prevent multiple concurrent submissions
+    if (this.isSubmitting) {
+      console.log('Already submitting, ignoring duplicate submission');
+      return;
+    }
+
+    const isValid = this.validateForm();
+    console.log('Form validation result:', isValid);
+
+    if (!isValid) {
+      console.log('Form validation failed, not submitting');
       return;
     }
 
@@ -512,16 +531,22 @@ class AdminManager {
     const btnText = submitBtn.querySelector('.btn-text');
     const btnSpinner = submitBtn.querySelector('.btn-spinner');
 
+    // Check if button elements exist
+    if (!submitBtn || !btnText || !btnSpinner) {
+      console.error('Submit button elements not found');
+      return;
+    }
+
     try {
+      // Set submission flag
+      this.isSubmitting = true;
+
       // Show loading state with enhanced visibility
       submitBtn.disabled = true;
       btnText.style.display = 'none';
       btnSpinner.style.display = 'flex';
 
-      // Prepare form data
-      const formData = new FormData();
-      
-      // Add form fields
+      // Prepare product data (will be used for each retry)
       const productData = {
         name: document.getElementById('product-name').value,
         category: document.getElementById('product-category').value,
@@ -535,41 +560,222 @@ class AdminManager {
         productData.id = this.currentEditingProduct.id;
       }
 
-      formData.append('productData', JSON.stringify(productData));
+      console.log('Submitting product data:', productData);
 
-      // Add files
-      if (this.uploadedFiles.product) {
-        formData.append('productFile', this.uploadedFiles.product);
-      }
-      
-      if (this.uploadedFiles.preview) {
-        formData.append('previewFile', this.uploadedFiles.preview);
+      // Validate required fields
+      if (!productData.name || !productData.category || typeof productData.price !== 'number') {
+        throw new Error('Missing required fields: name, category, and price are required');
       }
 
-      // Add resource images
-      if (this.uploadedFiles['resource-images'] && this.uploadedFiles['resource-images'].length > 0) {
-        this.uploadedFiles['resource-images'].forEach((file, index) => {
-          formData.append('resourceImages', file);
+      if (productData.price <= 0) {
+        throw new Error('Price must be greater than 0');
+      }
+
+      // Validate auth token once
+      const authToken = localStorage.getItem('admin_token');
+      if (!authToken) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      console.log('Auth token validated (length):', authToken.length);
+
+      // Test token validity by making a simple request first
+      try {
+        console.log('Testing authentication...');
+        const testResponse = await fetch('/.netlify/functions/manage-products', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
         });
+
+        if (testResponse.status === 401) {
+          throw new Error('Authentication expired. Please log out and log back in.');
+        }
+
+        console.log('Authentication test passed');
+      } catch (authTestError) {
+        console.warn('Authentication test failed:', authTestError.message);
+        // Continue anyway, but log the warning
       }
 
-      // Add auth token
-      formData.append('token', localStorage.getItem('admin_token'));
+      // Test if the target endpoint is reachable
+      try {
+        console.log('Testing endpoint connectivity...');
+        const endpointTest = await fetch(endpoint, {
+          method: 'OPTIONS'
+        });
+        console.log('Endpoint test status:', endpointTest.status);
+      } catch (endpointError) {
+        console.warn('Endpoint test failed:', endpointError.message);
+      }
 
       // Choose endpoint based on whether we're creating or updating
-      const endpoint = this.currentEditingProduct ? 
-        '/.netlify/functions/update-product' : 
+      const endpoint = this.currentEditingProduct ?
+        '/.netlify/functions/update-product' :
         '/.netlify/functions/create-product';
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData
-      });
+      console.log('Making request to:', endpoint);
 
-      const result = await response.json();
+      // Small delay to prevent potential timing issues
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to save product');
+      // Retry mechanism for response body issues
+      let maxRetries = 2;
+      let lastError = null;
+      let response = null;
+      let result = null;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          console.log(`Attempt ${attempt + 1} of ${maxRetries}`);
+
+          // Create fresh FormData for each attempt
+          const formData = new FormData();
+          formData.append('productData', JSON.stringify(productData));
+
+          // For new products, productFile is required
+          if (!this.currentEditingProduct) {
+            if (!this.uploadedFiles.product || !(this.uploadedFiles.product instanceof File)) {
+              throw new Error('Product file is required for new products');
+            }
+          }
+
+          // Add files with validation
+          if (this.uploadedFiles.product && this.uploadedFiles.product instanceof File) {
+            console.log('Adding product file:', this.uploadedFiles.product.name, 'Size:', this.uploadedFiles.product.size);
+            formData.append('productFile', this.uploadedFiles.product);
+          }
+
+          if (this.uploadedFiles.preview && this.uploadedFiles.preview instanceof File) {
+            console.log('Adding preview file:', this.uploadedFiles.preview.name, 'Size:', this.uploadedFiles.preview.size);
+            formData.append('previewFile', this.uploadedFiles.preview);
+          }
+
+          // Add resource images with validation
+          if (this.uploadedFiles['resource-images'] && Array.isArray(this.uploadedFiles['resource-images']) && this.uploadedFiles['resource-images'].length > 0) {
+            this.uploadedFiles['resource-images'].forEach((file, index) => {
+              if (file instanceof File) {
+                console.log('Adding resource image:', file.name, 'Size:', file.size);
+                formData.append('resourceImages', file);
+              }
+            });
+          }
+
+          formData.append('token', authToken);
+
+          console.log('FormData entries for attempt:', Array.from(formData.entries()).map(([key, value]) => {
+            if (value instanceof File) {
+              return [key, `File: ${value.name} (${value.size} bytes, ${value.type})`];
+            } else {
+              return [key, typeof value === 'string' ? value.substring(0, 100) : value];
+            }
+          }));
+
+          // Additional debugging for FormData structure
+          console.log('FormData keys:', Array.from(formData.keys()));
+          console.log('ProductData being sent:', JSON.stringify(productData, null, 2));
+
+          // Create AbortController for timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.log('Request timeout after 30 seconds');
+            controller.abort();
+          }, 30000); // 30 second timeout
+
+          try {
+            console.log('About to make fetch request...');
+
+            // Debug the request that's about to be sent
+            console.log('Request details:');
+            console.log('- Method: POST');
+            console.log('- Endpoint:', endpoint);
+            console.log('- FormData content-type will be auto-set by browser');
+            console.log('- FormData boundary will be auto-generated');
+
+            response = await fetch(endpoint, {
+              method: 'POST',
+              body: formData,
+              signal: controller.signal
+              // Don't set Content-Type header - let browser set it with boundary
+            });
+
+            console.log('Fetch completed, response received');
+            console.log('Response status:', response.status, response.statusText);
+            console.log('Response bodyUsed:', response.bodyUsed);
+            clearTimeout(timeoutId);
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            console.error('Fetch error:', fetchError);
+
+            if (fetchError.name === 'AbortError') {
+              throw new Error('Request timed out. Please try again.');
+            } else if (fetchError.message.includes('Failed to fetch')) {
+              throw new Error('Network error. Please check your connection and try again.');
+            } else {
+              throw new Error(`Request failed: ${fetchError.message}`);
+            }
+          }
+
+          // Debug response before processing
+          console.log('About to process response...');
+          console.log('Response ok:', response.ok);
+          console.log('Response status:', response.status);
+          console.log('Response bodyUsed before processing:', response.bodyUsed);
+
+          // Process the response (handles all success and error cases)
+          result = await this.processResponse(response);
+
+          // Check if the result indicates an error
+          if (result.error) {
+            console.error('Server returned error:', result);
+
+            // Create a detailed error message
+            let detailedError = `Server error: ${result.status}`;
+
+            if (result.error && typeof result.error === 'string') {
+              detailedError = result.error;
+            } else if (result.error && typeof result.error === 'object') {
+              detailedError = JSON.stringify(result.error);
+            }
+
+            if (result.details) {
+              console.error('Error details:', result.details);
+              if (result.details.message) {
+                detailedError += `\n\nDetails: ${result.details.message}`;
+              }
+              if (result.details.rawResponse) {
+                detailedError += `\n\nServer response: ${result.details.rawResponse}`;
+              }
+              if (result.details.stack) {
+                detailedError += `\n\nStack trace: ${result.details.stack}`;
+              }
+            }
+
+            throw new Error(detailedError);
+          }
+
+          // If we get here, the request was successful
+          console.log('Request completed successfully');
+          break;
+
+        } catch (error) {
+          lastError = error;
+          console.error(`Attempt ${attempt + 1} failed:`, error.message);
+
+          // If this is the last attempt, throw the error
+          if (attempt === maxRetries - 1) {
+            throw error;
+          }
+
+          // Wait a bit before retrying (only for certain types of errors)
+          if (error.message.includes('body') || error.message.includes('stream') || error.message.includes('clone')) {
+            console.log('Waiting 1 second before retry...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            // For other errors, don't retry
+            throw error;
+          }
+        }
       }
 
       // Show success modal
@@ -585,8 +791,36 @@ class AdminManager {
 
     } catch (error) {
       console.error('Product save error:', error);
-      this.showErrorModal(error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Error name:', error.name);
+      console.error('Error type:', typeof error);
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+
+      // Provide more specific error messages
+      let errorMessage = error.message || 'An unknown error occurred';
+
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage = 'Network error: Please check your internet connection and try again.';
+      } else if (error.message.includes('body stream already read')) {
+        errorMessage = 'Request processing error: The server response could not be read. Please try again.';
+      } else if (error.message.includes('timeout') || error.name === 'AbortError') {
+        errorMessage = 'Request timed out: The server took too long to respond. Please try again.';
+      } else if (error.message.includes('JSON')) {
+        errorMessage = 'Server response error: The server returned an invalid response. Please try again.';
+      } else if (error.message.includes('500')) {
+        // For 500 errors, show the full error message which should include server details
+        errorMessage = `Server error: ${error.message}`;
+      } else if (error.message.includes('401')) {
+        errorMessage = 'Authentication error: Please log out and log back in.';
+      } else if (error.message.includes('400')) {
+        errorMessage = 'Invalid request: Please check all form fields and try again.';
+      }
+
+      this.showErrorModal(errorMessage);
     } finally {
+      // Reset submission flag
+      this.isSubmitting = false;
+
       // Reset button state
       submitBtn.disabled = false;
       btnText.style.display = 'flex';
@@ -625,7 +859,7 @@ class AdminManager {
     const fieldGroup = field.closest('.form-group');
 
     if (field.required && !value) {
-      fieldGroup.classList.add('error');
+      if (fieldGroup) fieldGroup.classList.add('error');
       return false;
     }
 
@@ -633,7 +867,7 @@ class AdminManager {
     if (field.name === 'price') {
       const price = parseFloat(value);
       if (isNaN(price) || price < 0) {
-        fieldGroup.classList.add('error');
+        if (fieldGroup) fieldGroup.classList.add('error');
         return false;
       }
     }
@@ -646,7 +880,66 @@ class AdminManager {
    */
   clearFieldError(field) {
     const fieldGroup = field.closest('.form-group');
-    fieldGroup.classList.remove('error');
+    if (fieldGroup) {
+      fieldGroup.classList.remove('error');
+    }
+  }
+
+  /**
+   * Simple markdown renderer for text formatting
+   */
+  renderMarkdown(text) {
+    if (!text) return '';
+
+    return text
+      // Headers
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Underline (using HTML tags)
+      .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      // Bullet points
+      .replace(/^• (.*$)/gim, '<li>$1</li>')
+      // Wrap lists
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
+  }
+
+  /**
+   * Toggle preview mode for description textarea
+   */
+  togglePreview(textarea, button) {
+    const preview = document.getElementById('description-preview');
+    const previewContent = preview?.querySelector('.preview-content');
+
+    if (!preview || !previewContent) return;
+
+    const isPreviewMode = preview.style.display !== 'none';
+
+    if (isPreviewMode) {
+      // Switch back to edit mode
+      preview.style.display = 'none';
+      textarea.style.display = 'block';
+      button.classList.remove('active');
+      button.innerHTML = '<i class="fas fa-eye"></i>';
+      button.title = 'Show Preview';
+    } else {
+      // Switch to preview mode
+      const renderedContent = this.renderMarkdown(textarea.value || 'Enter your description...');
+      previewContent.innerHTML = renderedContent;
+      preview.style.display = 'block';
+      textarea.style.display = 'none';
+      button.classList.add('active');
+      button.innerHTML = '<i class="fas fa-edit"></i>';
+      button.title = 'Edit Description';
+    }
   }
 
   /**
@@ -812,7 +1105,27 @@ class AdminManager {
       const category = product.category || 'Uncategorized';
       const description = product.description || 'No description available';
       const isFeatureBadge = product.featured ? '<span class="product-manage-featured"><i class="fas fa-star"></i> Featured</span>' : '';
-      
+
+      // Truncate description before rendering markdown - handle very long words
+      const maxLength = 120;
+      let truncatedDescription = description;
+
+      if (description.length > maxLength) {
+        // Try to truncate at word boundaries first
+        const shortText = description.substring(0, maxLength);
+        const lastSpaceIndex = shortText.lastIndexOf(' ');
+
+        if (lastSpaceIndex > maxLength * 0.7) {
+          // Good word boundary found, use it
+          truncatedDescription = shortText.substring(0, lastSpaceIndex).trim() + '...';
+        } else {
+          // No good word boundary, just cut at character limit
+          truncatedDescription = shortText.trim() + '...';
+        }
+      }
+
+      const renderedDescription = this.renderMarkdown(truncatedDescription);
+
       card.innerHTML = `
         <div class="product-manage-header">
           <div class="product-manage-info">
@@ -823,11 +1136,11 @@ class AdminManager {
             </div>
           </div>
         </div>
-        
+
         <div class="product-manage-price">CAD $${price}</div>
-        
+
         <div class="product-manage-description">
-          ${this.escapeHtml(description.substring(0, 120))}${description.length > 120 ? '...' : ''}
+          ${renderedDescription}
         </div>
         
         <div class="product-manage-actions">
@@ -848,15 +1161,18 @@ class AdminManager {
    * Edit product - Load product data into form
    */
   async editProduct(productId) {
+    let targetButton = null;
+    let originalContent = '';
+
     try {
       // Show loading state
       const editButtons = document.querySelectorAll('.product-edit-btn');
-      const targetButton = Array.from(editButtons).find(btn => 
+      targetButton = Array.from(editButtons).find(btn =>
         btn.getAttribute('onclick').includes(productId)
       );
-      
+
       if (targetButton) {
-        const originalContent = targetButton.innerHTML;
+        originalContent = targetButton.innerHTML;
         targetButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
         targetButton.disabled = true;
       }
@@ -868,41 +1184,58 @@ class AdminManager {
         }
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to load product');
+      if (result.error) {
+        throw new Error(result.error);
       }
 
       const product = result.product;
-      
+
+      if (!product) {
+        throw new Error('Product data not found');
+      }
+
       // Set current editing product
       this.currentEditingProduct = product;
-      
+
       // Populate form fields
       document.getElementById('product-name').value = product.name || '';
       document.getElementById('product-category').value = product.category || '';
       document.getElementById('product-price').value = (product.price / 100).toFixed(2);
       document.getElementById('product-description').value = product.description || '';
-      document.getElementById('product-featured').checked = product.featured || false;
-      
+      document.getElementById('product-featured').checked = Boolean(product.featured);
+
       // Update form UI
       this.updateFormTitle();
-      
-      // Scroll to form
-      document.querySelector('.upload-section').scrollIntoView({ behavior: 'smooth' });
-      
+
       // Reset uploaded files (user can optionally upload new ones)
       this.resetUploadedFiles();
-      
+
+      // Scroll to form with a delay to ensure button state is updated
+      setTimeout(() => {
+        document.querySelector('.upload-section').scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+
     } catch (error) {
       console.error('Error loading product for edit:', error);
-      this.showErrorModal('Failed to load product data for editing.');
+      this.showErrorModal('Failed to load product data for editing: ' + error.message);
     } finally {
-      // Reset button state
+      // Always reset button state
       if (targetButton) {
-        targetButton.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        targetButton.innerHTML = originalContent || '<i class="fas fa-edit"></i> Edit';
         targetButton.disabled = false;
+
+        // Force a brief delay to ensure the UI update is visible
+        setTimeout(() => {
+          if (targetButton && targetButton.disabled) {
+            targetButton.disabled = false;
+          }
+        }, 50);
       }
     }
   }
@@ -1066,12 +1399,305 @@ class AdminManager {
   }
 
   /**
+   * Process fetch response with robust error handling
+   */
+  async processResponse(response) {
+    console.log('Processing response...');
+    console.log('Response status:', response.status, response.statusText);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+    // For successful responses without body consumption issues
+    if (response.ok && !response.bodyUsed) {
+      try {
+        const responseText = await response.text();
+        console.log('Response text length:', responseText.length);
+
+        if (responseText.trim()) {
+          const result = JSON.parse(responseText);
+          console.log('Successfully parsed response:', result);
+          return result;
+        } else {
+          // Empty successful response
+          return { success: true, message: 'Operation completed successfully' };
+        }
+      } catch (error) {
+        console.warn('Failed to read successful response body:', error.message);
+        // Fallback for successful responses with body issues
+        return { success: true, message: 'Operation completed successfully' };
+      }
+    }
+
+    // For error responses or body consumption issues
+    let errorMessage = `Server error: ${response.status} ${response.statusText}`;
+    let fullErrorDetails = null;
+
+    try {
+      if (!response.bodyUsed) {
+        const responseText = await response.text();
+        console.log('Error response text:', responseText);
+
+        if (responseText.trim()) {
+          try {
+            const errorData = JSON.parse(responseText);
+            console.log('Error response JSON:', errorData);
+            errorMessage = errorData.error || errorData.message || errorMessage;
+            fullErrorDetails = errorData;
+          } catch (jsonError) {
+            // If not JSON, use the text as error message
+            console.log('Error response is not JSON, using as text');
+            errorMessage = responseText.substring(0, 300);
+            fullErrorDetails = { rawResponse: responseText };
+          }
+        }
+      }
+    } catch (readError) {
+      console.warn('Could not read error response body:', readError.message);
+      // Keep the default error message
+    }
+
+    return {
+      error: errorMessage,
+      status: response.status,
+      details: fullErrorDetails
+    };
+  }
+
+  /**
    * Utility method to escape HTML
    */
   escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Setup text formatting toolbar functionality
+   */
+  setupFormattingToolbar() {
+    const toolbar = document.getElementById('formatting-toolbar');
+    const textarea = document.getElementById('product-description');
+
+    if (!toolbar || !textarea) return;
+
+    // Add click event listeners to toolbar buttons
+    toolbar.addEventListener('click', (e) => {
+      const button = e.target.closest('.toolbar-btn');
+      if (!button) return;
+
+      e.preventDefault();
+      const action = button.dataset.action;
+      this.handleFormatAction(action, textarea, button);
+    });
+
+    // Add keyboard shortcuts
+    textarea.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'b':
+            e.preventDefault();
+            this.handleFormatAction('bold', textarea);
+            break;
+          case 'i':
+            e.preventDefault();
+            this.handleFormatAction('italic', textarea);
+            break;
+          case 'u':
+            e.preventDefault();
+            this.handleFormatAction('underline', textarea);
+            break;
+        }
+      }
+    });
+
+    // Update preview in real-time
+    textarea.addEventListener('input', () => {
+      const preview = document.getElementById('description-preview');
+      const previewContent = preview?.querySelector('.preview-content');
+      if (preview && previewContent && preview.style.display !== 'none') {
+        const renderedContent = this.renderMarkdown(textarea.value || 'Enter your description...');
+        previewContent.innerHTML = renderedContent;
+      }
+    });
+
+    // Update toolbar state on selection change
+    textarea.addEventListener('selectionchange', () => {
+      this.updateToolbarState(textarea);
+    });
+
+    textarea.addEventListener('keyup', () => {
+      this.updateToolbarState(textarea);
+    });
+
+    textarea.addEventListener('mouseup', () => {
+      this.updateToolbarState(textarea);
+    });
+  }
+
+  /**
+   * Handle formatting actions
+   */
+  handleFormatAction(action, textarea, button = null) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const beforeText = textarea.value.substring(0, start);
+    const afterText = textarea.value.substring(end);
+
+    let newText = '';
+    let cursorPos = start;
+
+    switch (action) {
+      case 'bold':
+        if (selectedText) {
+          newText = `**${selectedText}**`;
+          cursorPos = start + newText.length;
+        } else {
+          newText = '**bold text**';
+          cursorPos = start + 2;
+        }
+        break;
+
+      case 'italic':
+        if (selectedText) {
+          newText = `*${selectedText}*`;
+          cursorPos = start + newText.length;
+        } else {
+          newText = '*italic text*';
+          cursorPos = start + 1;
+        }
+        break;
+
+      case 'underline':
+        if (selectedText) {
+          newText = `<u>${selectedText}</u>`;
+          cursorPos = start + newText.length;
+        } else {
+          newText = '<u>underlined text</u>';
+          cursorPos = start + 3;
+        }
+        break;
+
+      case 'heading':
+        const lineStart = beforeText.lastIndexOf('\n') + 1;
+        const lineEnd = afterText.indexOf('\n');
+        const fullLineEnd = lineEnd === -1 ? textarea.value.length : end + lineEnd;
+        const lineText = textarea.value.substring(lineStart, fullLineEnd);
+
+        if (lineText.startsWith('## ')) {
+          // Convert to H3
+          newText = lineText.replace('## ', '### ');
+        } else if (lineText.startsWith('# ')) {
+          // Convert to H2
+          newText = lineText.replace('# ', '## ');
+        } else {
+          // Convert to H1
+          newText = '# ' + lineText;
+        }
+
+        textarea.value = beforeText.substring(0, lineStart) + newText + afterText.substring(lineEnd === -1 ? 0 : lineEnd);
+        cursorPos = lineStart + newText.length;
+        break;
+
+      case 'list':
+        const lines = selectedText ? selectedText.split('\n') : ['List item'];
+        newText = lines.map(line => `• ${line.trim()}`).join('\n');
+        cursorPos = start + newText.length;
+        break;
+
+      case 'link':
+        const linkText = selectedText || 'link text';
+        newText = `[${linkText}](https://example.com)`;
+        cursorPos = selectedText ? start + newText.length : start + linkText.length + 3;
+        break;
+
+      case 'clear':
+        if (selectedText) {
+          // Remove common markdown formatting
+          newText = selectedText
+            .replace(/\*\*(.*?)\*\*/g, '$1')  // Bold
+            .replace(/\*(.*?)\*/g, '$1')      // Italic
+            .replace(/<u>(.*?)<\/u>/g, '$1')  // Underline
+            .replace(/^#{1,6}\s+/gm, '')      // Headers
+            .replace(/^[•\-\*]\s+/gm, '')     // Lists
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Links
+          cursorPos = start + newText.length;
+        }
+        break;
+
+      case 'preview':
+        this.togglePreview(textarea, button);
+        return;
+
+      default:
+        return;
+    }
+
+    if (action !== 'heading') {
+      textarea.value = beforeText + newText + afterText;
+    }
+
+    // Set cursor position
+    textarea.focus();
+    textarea.setSelectionRange(cursorPos, cursorPos);
+
+    // Update button state
+    if (button) {
+      button.classList.toggle('active', true);
+      setTimeout(() => button.classList.remove('active'), 200);
+    }
+
+    // Trigger input event for any listeners
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /**
+   * Update toolbar button states based on current selection
+   */
+  updateToolbarState(textarea) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+
+    // This is a simplified state update - in a full implementation,
+    // you would parse the text around the cursor to determine active states
+    const toolbarButtons = document.querySelectorAll('.toolbar-btn');
+    toolbarButtons.forEach(btn => {
+      const action = btn.dataset.action;
+      let isActive = false;
+
+      switch (action) {
+        case 'bold':
+          isActive = selectedText.includes('**') || this.isInsideMarkdown(textarea, start, '**');
+          break;
+        case 'italic':
+          isActive = selectedText.includes('*') || this.isInsideMarkdown(textarea, start, '*');
+          break;
+        case 'underline':
+          isActive = selectedText.includes('<u>') || this.isInsideMarkdown(textarea, start, '<u>', '</u>');
+          break;
+      }
+
+      btn.classList.toggle('active', isActive);
+    });
+  }
+
+  /**
+   * Check if cursor is inside markdown formatting
+   */
+  isInsideMarkdown(textarea, position, startMark, endMark = null) {
+    const text = textarea.value;
+    endMark = endMark || startMark;
+
+    // Find the last occurrence of startMark before position
+    const lastStart = text.lastIndexOf(startMark, position);
+    if (lastStart === -1) return false;
+
+    // Find the first occurrence of endMark after lastStart
+    const nextEnd = text.indexOf(endMark, lastStart + startMark.length);
+
+    // Check if position is between the markers
+    return nextEnd !== -1 && position >= lastStart && position <= nextEnd;
   }
 }
 

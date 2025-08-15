@@ -1,6 +1,15 @@
 {
   "name": "stepitup-site",
   "version": "1.0.0",
+  "scripts": {
+    "dev": "npx serve . -l 8080",
+    "start": "npx serve . -l 8080",
+    "build": "echo 'Static site - no build required'",
+    "netlify-dev": "netlify dev"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.5",
     "axios": "^1.6.8",
