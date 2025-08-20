@@ -379,9 +379,10 @@ margin-top: 0.2rem;
 /* Products Grid */
 .products-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 320px));
   gap: 2em;
   margin-bottom: 3em;
+  justify-content: center;
 }
 
 .product-card {
@@ -953,7 +954,6 @@ margin-top: 0.2rem;
   font-weight: 500;
   font-size: 0.9rem;
   padding: 0;
-  text-decoration: underline;
   transition: all 0.2s ease;
   margin-bottom: 1rem;
   display: inline-flex;
@@ -962,8 +962,9 @@ margin-top: 0.2rem;
 }
 
 .learn-more-btn:hover {
-  color: #1e5bb3;
-  text-decoration: none;
+  background: #1b5bb3;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(44, 119, 204, 0.3);
 }
 
 /* Featured Product Actions */
