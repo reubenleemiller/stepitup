@@ -32,32 +32,164 @@
   <header>
     <a href="https://stepituplearning.ca/index"><img src="assets/logo.png" alt="Step it Up Learning Logo" class="logo" /></a>
     <button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
-    <nav id="nav-menu">
-      <ul>
-        <li><a href="https://stepituplearning.ca/index">Home</a></li>
-        <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
-        <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
-        <li><a href="https://stepituplearning.ca/pages/extras">Extras</a></li>
-        <li><a href="https://stepituplearning.ca/pages/reviews">Reviews</a></li>
-        <li><a href="https://stepituplearning.ca/pages/about">About</a></li>
-        <li><a href="https://stepituplearning.ca/pages/contact">Contact</a></li>
+<nav id="nav-menu">
+  <ul>
+    <li><a href="https://stepituplearning.ca/index">Home</a></li>
+    <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+    <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+    <li>
+      <a href="https://shop.stepituplearning.ca">Shop <span class="arrow">&#9662;</span></a>
+      <ul class="dropdown">
+        <li>
+          <a href="https://stepituplearning.ca/pages/resources">Freebies</a>
+        </li>
       </ul>
-    </nav>
+    </li>
+    <li><a href="https://stepituplearning.ca/pages/reviews">Reviews</a></li>
+    <li><a href="https://stepituplearning.ca/pages/about">About</a></li>
+    <li><a href="https://stepituplearning.ca/pages/contact">Contact</a></li>
+  </ul>
+</nav>
+<style>
+#nav-menu li ul.dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  min-width: 160px;
+  background: #fff;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  padding: 0;
+  margin: 0;
+  z-index: 999;
+}
+#nav-menu li:hover > ul.dropdown,
+#nav-menu li:focus-within > ul.dropdown {
+  display: block;
+}
+#nav-menu li {
+  position: relative;
+}
+#nav-menu li ul.dropdown li a {
+  display: block;
+  padding: 10px 20px;
+  color: #2c77cc;
+  white-space: nowrap;
+  background: #fff;
+  font-weight: bold;
+}
+#nav-menu li ul.dropdown li a:hover {
+  background: #f0f0f0;
+}
+
+/* Arrow styling and transition */
+#nav-menu .arrow {
+  display: inline-block;
+  margin-left: 4px;
+  transition: transform 0.3s ease;
+  font-size: 0.8em;
+}
+#nav-menu li:hover > a .arrow,
+#nav-menu li:focus-within > a .arrow {
+  transform: rotate(180deg);
+}
+</style>
   </header>
 
 <main class="content">
-  <h1 class="grade-select-title">Select the Grade level your child is entering</h1>
-  <div class="grade-select-wrapper">
-    <a class="grade-btn" href="packages-gr-k-3.html">Grades (K-3)</a>
-    <a class="grade-btn" href="packages-gr-4-5.html">Grades (4-5)</a>
-    <a class="grade-btn" href="packages-gr-6.html">Grade 6</a>
-  </div>
-  <div style="border-top: 4px solid #2c77cc; margin-top:2rem;">
-  <h1 class="grade-select-title">Book a FREE 15-min Meet and Greet</h1>
-  <div class="grade-select-wrapper">
-  <a class="grade-btn" data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Book Your Meet &amp; Greet</a>
-  </div>
-  </div>
+<div class="carousel-container">
+  <button class="carousel-arrow left" aria-label="Scroll Left">
+    <svg class="carousel-arrow-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  
+  <div class="pricing-carousel"> 
+    <div class="carousel-spacer"></div>
+    <div class="pricing-cards">       	
+      <!-- 4-Hour Package -->
+      <div class="pricing-card" data-package="4-hour-package" data-amount="10800">
+        <h1>4-Hour Package</h1>
+        <h2>$108 CAD</h2>
+        <p><strong>4 hours of tutoring (save 10%)</strong></p>
+        <ul>
+          <li>Flexible scheduling</li>
+          <li>Choose math, language, or both</li>
+          <li>Personalized learning plan</li>
+          <li>Engaging, age-appropriate activities</li>
+          <li>Great for a quick boost or starter package</li>
+        </ul>
+<div class="checkbox-wrapper-31">
+  <input type="checkbox" id="subscribe-4" name="package-checkbox" value="4-hour-package" />
+  <svg viewBox="0 0 35.6 35.6">
+    <circle class="background" cx="17.8" cy="17.8" r="17.8"></circle>
+    <circle class="stroke" cx="17.8" cy="17.8" r="14.37"></circle>
+    <polyline class="check" points="11.78 18.12 15.55 22.23 25.17 12.87"></polyline>
+  </svg>
+  <span><h3>Subscribe</h3></span>
+</div>
+      </div>
+		
+      <!-- 8-Hour Package (Recommended + Selected by default) -->
+      <div class="pricing-card recommended selected" data-package="8-hour-package" data-amount="21600">
+        <div class="ribbon">Recommended</div>
+        <h1>8-Hour Package</h1>
+        <h2>$216 CAD</h2>
+        <p><strong>8 hours of tutoring (save 10%)</strong></p>
+        <ul>
+          <li>Flexible scheduling for busy families</li>
+          <li>Comprehensive math and language support</li>
+          <li>Tailored learning and regular progress updates</li>
+          <li>Preparation for upcoming grade levels</li>
+          <li>Best value for ongoing support</li>
+        </ul>
+<div class="checkbox-wrapper-31">
+  <input type="checkbox" id="subscribe-8" name="package-checkbox" value="8-hour-package" />
+  <svg viewBox="0 0 35.6 35.6">
+    <circle class="background" cx="17.8" cy="17.8" r="17.8"></circle>
+    <circle class="stroke" cx="17.8" cy="17.8" r="14.37"></circle>
+    <polyline class="check" points="11.78 18.12 15.55 22.23 25.17 12.87"></polyline>
+  </svg>
+  <span><h3>Subscribe</h3></span>
+</div>
+      </div>
+
+      <!-- 12-Hour Package -->
+      <div class="pricing-card" data-package="12-hour-package" data-amount="32400">
+        <h1>12-Hour Package</h1>
+        <h2>$324 CAD</h2>
+        <p><strong>12 hours of tutoring (save 10%)</strong></p>
+        <ul>
+          <li>Extended, in-depth support for the school year</li>
+          <li>Mix and match subjects as needed</li>
+          <li>Frequent check-ins and personalized feedback</li>
+          <li>Ideal for mastering concepts and enrichment</li>
+          <li>Maximum flexibility and best savings</li>
+        </ul>
+<div class="checkbox-wrapper-31">
+  <input type="checkbox" id="subscribe-12" name="package-checkbox" value="12-hour-package" />
+  <svg viewBox="0 0 35.6 35.6">
+    <circle class="background" cx="17.8" cy="17.8" r="17.8"></circle>
+    <circle class="stroke" cx="17.8" cy="17.8" r="14.37"></circle>
+    <polyline class="check" points="11.78 18.12 15.55 22.23 25.17 12.87"></polyline>
+  </svg>
+  <span><h3>Subscribe</h3></span>
+</div>
+      </div>      
+    </div> <!-- .pricing-cards --> 
+    <div class="carousel-spacer"></div>      
+  </div> <!-- .pricing-carousel -->
+
+  <button class="carousel-arrow right" aria-label="Scroll Right">
+    <svg class="carousel-arrow-icon" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <polyline points="9 6 15 12 9 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+  <div class="carousel-dots" id="carousel-dots"></div>
+</div> <!-- .carousel-container -->
+
+<button id="submit">Continue to Payment</button>
+<div id="error-message"></div>
 </main>
 <footer class="footer-flex">
 <div class="footer-links">
@@ -67,7 +199,7 @@
 <a href="https://stepituplearning.ca/pages/terms-of-service">Terms of Service</a>
 <a href="https://stepituplearning.ca/pages/privacy-policy">Privacy Policy</a>
 <a href="https://stepituplearning.ca/pages/refund-policy">Refund Policy</a>
-<a href="https://stepituplearning.ca/pages/extras">Extras</a>
+<a href="https://shop.stepituplearning.ca">Shop</a>
 <a href="https://stepituplearning.ca/pages/reviews">Reviews</a>
 <a href="https://stepituplearning.ca/pages/contact">Contact</a>
 <div class="footer-payment-icons">
@@ -81,6 +213,7 @@
 <a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
 <a data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Meet &amp; Greet</a>
 <a href="https://packages.stepituplearning.ca/">Packages</a>
+<a href="https://billing.stripe.com/p/login/6oU4gz6GvbWuc313uf0Jq00" target="_blank">Manage Subscription</a>
 </div>
 <div class="footer-links">
 <p>Contact Info</p>
@@ -112,6 +245,7 @@
 </div>
 </footer>
 <script src="scripts/preloader.js"></script>
+<script src="scripts/client.js"></script>
 <script src="scripts/calcom-60min.js"></script>
 <script src="scripts/contact-form.js"></script>
 <script src="scripts/calcom-meet-and-greet.js"></script>

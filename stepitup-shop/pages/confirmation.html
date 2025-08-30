@@ -32,16 +32,67 @@
 <a href="../index.html"><img alt="Step it Up Learning Logo" class="logo" src="../assets/logo.png"/></a>
 <button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
 <nav id="nav-menu">
-<ul>
-<li><a href="https://stepituplearning.ca">Home</a></li>
-<li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
-<li><a href="https://packages.stepituplearning.ca">Packages</a></li>
-<li><a href="https://stepituplearning.ca/pages/extras.html">Extras</a></li>
-<li><a href="https://stepituplearning.ca/pages/reviews.html">Reviews</a></li>
-<li><a href="https://stepituplearning.ca/pages/about.html">About</a></li>
-<li><a href="https://stepituplearning.ca/pages/contact.html">Contact</a></li>
-</ul>
+  <ul>
+    <li><a href="https://stepituplearning.ca/index">Home</a></li>
+    <li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+    <li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+    <li>
+      <a href="https://shop.stepituplearning.ca">Shop <span class="arrow">&#9662;</span></a>
+      <ul class="dropdown">
+        <li>
+          <a href="https://stepituplearning.ca/pages/resources">Freebies</a>
+        </li>
+      </ul>
+    </li>
+    <li><a href="https://stepituplearning.ca/pages/reviews">Reviews</a></li>
+    <li><a href="https://stepituplearning.ca/pages/about">About</a></li>
+    <li><a href="https://stepituplearning.ca/pages/contact">Contact</a></li>
+  </ul>
 </nav>
+<style>
+#nav-menu li ul.dropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 100%;
+  min-width: 160px;
+  background: #fff;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+  padding: 0;
+  margin: 0;
+  z-index: 999;
+}
+#nav-menu li:hover > ul.dropdown,
+#nav-menu li:focus-within > ul.dropdown {
+  display: block;
+}
+#nav-menu li {
+  position: relative;
+}
+#nav-menu li ul.dropdown li a {
+  display: block;
+  padding: 10px 20px;
+  color: #2c77cc;
+  white-space: nowrap;
+  background: #fff;
+  font-weight: bold;
+}
+#nav-menu li ul.dropdown li a:hover {
+  background: #f0f0f0;
+}
+
+/* Arrow styling and transition */
+#nav-menu .arrow {
+  display: inline-block;
+  margin-left: 4px;
+  transition: transform 0.3s ease;
+  font-size: 0.8em;
+}
+#nav-menu li:hover > a .arrow,
+#nav-menu li:focus-within > a .arrow {
+  transform: rotate(180deg);
+}
+</style>
 </header>
 <main class="content">
   <div class="confirmation-page">
@@ -136,7 +187,7 @@
 <a href="https://stepituplearning.ca/pages/terms-of-service.html">Terms Of Service</a>
 <a href="https://stepituplearning.ca/pages/privacy-policy.html">Privacy Policy</a>
 <a href="https://stepituplearning.ca/pages/refund-policy.html">Refund Policy</a>
-<a href="https://stepituplearning.ca/pages/extras.html">Extras</a>
+<a href="https://shop.stepituplearning.ca">Shop</a>
 <a href="https://stepituplearning.ca/pages/reviews.html">Reviews</a>
 <a href="https://stepituplearning.ca/pages/contact.html">Contact</a>
 <div class="footer-payment-icons">
@@ -151,6 +202,7 @@
 <a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
 <a data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Meet &amp; Greet</a>
 <a href="https://packages.stepituplearning.ca/">Packages</a>
+<a href="https://billing.stripe.com/p/login/6oU4gz6GvbWuc313uf0Jq00" target="_blank">Manage Subscription</a>
 </div>
 <div class="footer-links">
 <p>Contact Info</p>

@@ -15,7 +15,7 @@ exports.handler = async (event) => {
 
     if (customerEmail) updateParams.receipt_email = customerEmail;
 
-    // 👇 Preserve existing metadata and add customer_name
+    // Preserve existing metadata and add customer_name
     if (customerName) {
       const existingIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
       const existingMetadata = existingIntent.metadata || {};

@@ -1,0 +1,28 @@
+{
+  "name": "stepitup-site",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx serve . -l 8080",
+    "start": "npx serve . -l 8080",
+    "build": "echo 'Static site - no build required'",
+    "netlify-dev": "netlify dev"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.5",
+    "axios": "^1.6.8",
+    "busboy": "^1.6.0",
+    "form-data": "^4.0.0",
+    "formidable": "^3.5.4",
+    "jsonwebtoken": "^9.0.0",
+    "jszip": "^3.10.1",
+    "lambda-multipart-parser": "^1.0.1",
+    "node-fetch": "^3.3.2",
+    "pdfkit": "^0.15.0",
+    "resend": "^4.6.0",
+    "stripe": "^18.2.1",
+    "uuid": "^9.0.0"
+  }
+}

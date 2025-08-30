@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en" class="preloader-lock">
+<head>
+<script>
+  document.documentElement.classList.add('preloader-lock');
+</script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RK4KPSSPT7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-RK4KPSSPT7');
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta http-equiv="Permissions-Policy" content="fullscreen=()">
+<title>Extras</title>
+<link href="../style.css" rel="stylesheet"/>
+</head>
+<body class="locked">
+<div id="site-preloader" class="">
+  <div class="preloader-spinner-wrapper">
+    <div class="custom-spinner">
+      <div></div>
+    </div>
+    <img src="../assets/logo.png" alt="Step it Up Learning Logo" class="preloader-logo" />
+  </div>
+</div>
+<header class="sticky">
+<a href="../index.html"><img alt="Step it Up Learning Logo" class="logo" src="../assets/logo.png"/></a>
+<button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
+<nav id="nav-menu">
+<ul>
+<li><a href="../index.html">Home</a></li>
+<li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+<li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+<li><a href="extras.html">Extras</a></li>
+<li><a href="reviews.html">Reviews</a></li>
+<li><a href="about.html">About</a></li>
+<li><a href="contact.html">Contact</a></li>
+</ul>
+</nav>
+</header>
+<main class="content">
+
+  <!-- PDF Preview Section placed BEFORE the newsletter form -->
+    <h2 style="display:flex; justify-content:center; align-items:center;">Summer Bingo Card</h2>
+    <p>
+Summer Reading Bingo is HERE!
+<br><br>
+Looking for a fun way to keep your child reading this summer?
+Download our FREE bingo card, complete the challenges, and enter to WIN!
+<br><br>
+How it works:<br><br>
+✔️ For students entering K–12 in Alberta<br>
+✔️ Complete a bingo (horizontal, vertical, or diagonal)<br>
+✔️ Each bingo = 1 entry (Do more bingos, get more chances!)<br>
+✔️ Email a photo or list of the books you read to info@stepituplearning.ca<br>
+🏆 Winner will be drawn on <strong>August 25, 2025</strong>!<br><br>
+
+It’s fun. It’s free. And it’s a great way to get your kids ready for back to school.<br>
+Ready to join the challenge?
+    </p>
+    <div style="width:100%; max-width:600px; margin:0 auto; background:#fafbfc; border-radius:8px; border:1px solid #ddd; box-shadow:0 2px 8px #0001; overflow:hidden;">
+      <embed
+        src="/assets/Summer_Reading_Bingo-PREVIEW.pdf#toolbar=0&navpanes=0&scrollbar=0"
+        type="application/pdf"
+        style="width:100%; aspect-ratio:8.5/11; min-height:350px; background:#fff; display:block; border:none;"
+      >
+    </div>
+
+  <form id="newsletter-form" autocomplete="off">
+    <h2 style="display:flex; justify-content:center; align-items:center;">Get the Summer Reading Bingo Card</h2>
+    <input type="email" id="newsletter-email" name="email" placeholder="Your email address" required>
+    <button type="submit" class="download-btn">
+      <span id="newsletter-btn-text">Subscribe to Newsletter to Access</span>
+      <span class="newsletter-spinner hidden" id="newsletter-spinner"></span>
+      <span class="success-checkmark hidden" id="newsletter-success">&#10003;</span>
+    </button>
+    <div class="error hidden" id="newsletter-error"></div>
+  </form>
+
+</main>
+<footer class="footer-flex">
+<div class="footer-links">
+<p>© 2025 Step it Up Learning</p>
+<a href="../index.html">Home</a>
+<a href="about.html">About</a>
+<a href="terms-of-service.html">Terms Of Service</a>
+<a href="privacy-policy.html">Privacy Policy</a>
+<a href="refund-policy.html">Refund Policy</a>
+<a href="extras.html">Extras</a>
+<a href="reviews.html">Reviews</a>
+<a href="contact.html">Contact</a>
+<div class="footer-payment-icons">
+  <i class="fab fa-cc-visa"></i>
+  <i class="fab fa-cc-mastercard"></i>
+  <i class="fab fa-cc-stripe"></i>
+</div>
+</div>
+<div class="footer-links">
+<p>Sessions and Packages</p>
+<a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
+<a data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Meet &amp; Greet</a>
+<a href="https://packages.stepituplearning.ca/">Packages</a>
+</div>
+<div class="footer-links">
+<p>Contact Info</p>
+<a href="mailto:info@stepituplearning.ca"><i class="fa-solid fa-envelope"></i>&nbsp;info@stepituplearning.ca</a>
+<a href="tel:4035984840"><i class="fa-solid fa-phone"></i>&nbsp;+1 (403) 598-4840</a>
+</div>
+<div class="footer-links">
+<p>Find us on social media</p>
+<div style="display:flex; flex-direction: row !important;">
+<a href="https://www.facebook.com/people/Step-It-Up-Learning/61577924427778/"><i class="fa-brands fa-facebook" style="font-size:25px; margin-right: 0.5rem;"></i></a>
+<a href="https://www.instagram.com/stepituplearning/"><i class="fa-brands fa-instagram" style="font-size:25px; margin-left: 0.5rem;"></i></a>
+</div>
+</div>
+<div class="footer-contact-form">
+    <h3>Send Us a Message</h3>
+    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="contact" />
+      <input type="hidden" name="bot-field" />
+
+      <input name="name" placeholder="Your Name" required type="text" />
+      <input name="email" placeholder="Your Email" required type="email" />
+      <textarea name="message" placeholder="Your Message" required></textarea>
+
+      <button type="submit" id="submit-btn">
+  <span class="btn-text">Send Message</span>
+  <span class="spinner" aria-hidden="true"></span>
+</button>
+    </form>
+</div>
+</footer>
+<script src="../scripts/preloader.js"></script>
+<script src="../scripts/calcom-60min.js"></script>
+<script src="../scripts/calcom-meet-and-greet.js"></script>
+<script src="../scripts/contact-form.js"></script>
+<script src="../scripts/newsletter.js"></script>
+<script>
+  function toggleMenu() {
+    const nav = document.getElementById("nav-menu");
+    nav.classList.toggle("open");
+  }
+</script>
+<!-- Cookie Consent Popup -->
+<div id="cookie-consent-banner" aria-live="polite">
+  <div class="cookie-consent-popup" role="dialog" aria-modal="true" aria-labelledby="cookie-title">
+    <h3 id="cookie-title">Cookies & Privacy</h3>
+    <p>
+      We use cookies to enhance your experience.
+      Read our <a href="https://www.stepituplearning.ca/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and
+      <a href="https://www.stepituplearning.ca/pages/cookie-policy" target="_blank" rel="noopener">Cookie Policy</a>.
+    </p>
+    <div class="cookie-actions">
+      <button id="cookie-accept">Accept</button>
+      <button id="cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days*24*60*60*1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+  }
+
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i=0;i < ca.length;i++) {
+      let c = ca[i];
+      while (c.charAt(0)==' ') c = c.substring(1,c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+  }
+
+  window.addEventListener('DOMContentLoaded', function() {
+    const banner = document.getElementById('cookie-consent-banner');
+    if (!getCookie('cookie_consent')) {
+      banner.classList.add('show');
+    }
+    document.getElementById('cookie-accept').onclick = function() {
+      setCookie('cookie_consent', 'accepted', 365);
+      banner.classList.remove('show');
+    };
+    document.getElementById('cookie-decline').onclick = function() {
+      setCookie('cookie_consent', 'declined', 365);
+      banner.classList.remove('show');
+    };
+  });
+</script>
+</body>
+</html>

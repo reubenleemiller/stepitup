@@ -9,15 +9,9 @@ let appliedDiscount = 0;
 let selectedCouponCode = "";
 
 const PRICES = {
-  "math-package-k3": 20000,
-  "step-it-up-package-k3": 36000,
-  "language-package-k3": 20000,
-  "math-package-45": 36000,
-  "step-it-up-package-45": 50000,
-  "language-package-45": 20000,
-  "math-package-6": 36000,
-  "step-it-up-package-6": 65000,
-  "language-package-6": 36000,
+  "4-hour-package": 10800,
+  "8-hour-package": 21600,
+  "12-hour-package": 32400
 };
 
 // UPDATED: Added optional color parameter with default empty string
@@ -25,7 +19,7 @@ function updatePriceDisplay(originalPrice, discount = 0, color = "") {
   const finalPrice = (originalPrice - discount) / 100;
   const priceDisplay = document.querySelector("#price-display");
   priceDisplay.textContent = `$${finalPrice.toFixed(2)}`;
-  priceDisplay.style.color = color;  // set text color dynamically
+  priceDisplay.style.color = color;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -75,12 +69,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         returnUrl = data.returnUrl;
         appliedDiscount = data.discountAmount || 0;
 
-        // UPDATED: Pass color "green" when coupon applied
         updatePriceDisplay(baseAmount, appliedDiscount, "green");
         msg.textContent = `Coupon applied! You save $${(appliedDiscount / 100).toFixed(2)}.`;
         applySuccess();
         document.getElementById("coupon-code").disabled = true;
-
 
         elements = stripe.elements({ clientSecret });
         const paymentElement = elements.create("payment");
@@ -88,7 +80,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       } catch (err) {
         console.error(err);
         appliedDiscount = 0;
-        // UPDATED: Reset color to default when coupon invalid
         updatePriceDisplay(baseAmount, 0, "");
         msg.textContent = err.message;
         msg.style.color = "red";
@@ -172,7 +163,6 @@ async function createOrUpdatePaymentIntent(packageValue) {
     returnUrl = data.returnUrl;
     appliedDiscount = data.discountAmount || 0;
 
-    // UPDATED: Pass color depending on discount amount
     updatePriceDisplay(baseAmount, appliedDiscount, appliedDiscount > 0 ? "green" : "");
 
     elements = stripe.elements({ clientSecret });

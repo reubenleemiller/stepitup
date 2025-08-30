@@ -1,0 +1,37 @@
+.
+├── assets
+│   ├── IMG_4195.png
+│   └── logo.png
+├── index.html
+├── netlify
+│   └── functions
+│       ├── _supabase.js
+│       ├── booking-handler.mjs
+│       ├── create-payment-intent.js
+│       ├── emailTemplates.js
+│       ├── ticket.js
+│       └── update-payment-intent.js
+├── netlify.toml
+├── package-lock.json
+├── package.json
+├── packages-gr-4-5.html
+├── packages-gr-6.html
+├── packages-gr-k-3.html
+├── pages
+│   ├── checkout.html
+│   ├── succeeded.html
+│   └── success.html
+├── scripts
+│   ├── calcom-60min-package.js
+│   ├── calcom-60min-packages.js
+│   ├── calcom-60min.js
+│   ├── calcom-meet-and-greet.js
+│   ├── checkout.js
+│   ├── client.js
+│   ├── confirmation-grouped.js
+│   ├── contact-form.js
+│   ├── coupon-spinner.js
+│   └── preloader.js
+└── style.css
+
+6 directories, 29 files

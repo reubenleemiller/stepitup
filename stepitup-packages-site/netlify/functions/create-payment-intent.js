@@ -1,15 +1,9 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const PRICES = {
-  "math-package-k3": 20000,
-  "step-it-up-package-k3": 36000,
-  "language-package-k3": 20000,
-  "math-package-45": 36000,
-  "step-it-up-package-45": 50000,
-  "language-package-45": 20000,
-  "math-package-6": 36000,
-  "step-it-up-package-6": 65000,
-  "language-package-6": 36000,
+  "4-hour-package": 10800,
+  "8-hour-package": 21600,
+  "12-hour-package": 32400
 };
 
 exports.handler = async (event) => {
@@ -49,7 +43,7 @@ exports.handler = async (event) => {
 
       const coupon = await stripe.coupons.retrieve(promo.coupon.id);
 
-      // ✅ Manually track redemptions via metadata
+      // Manually track redemptions via metadata
       const manualRedemptions = parseInt(promo.metadata.manual_redemptions || "0", 10);
       const maxRedemptions = promo.max_redemptions;
 
@@ -77,7 +71,7 @@ exports.handler = async (event) => {
         };
       }
 
-      // ✅ Increment redemption and optionally deactivate if limit reached
+      // Increment redemption and optionally deactivate if limit reached
       const newRedemptions = manualRedemptions + 1;
       const shouldDeactivate = maxRedemptions && newRedemptions >= maxRedemptions;
 
@@ -104,19 +98,8 @@ exports.handler = async (event) => {
       },
     });
 
-    const stepItUpPackages = [
-      "step-it-up-package-k3",
-      "math-package-k3",
-      "step-it-up-package-45",
-      "math-package-45",
-      "step-it-up-package-6",
-      "math-package-6",
-      "language-package-6",
-    ];
-
-    const returnUrl = stepItUpPackages.includes(selectedPackage)
-      ? "https://packages.stepituplearning.ca/pages/succeeded"
-      : "https://packages.stepituplearning.ca/pages/success";
+    // For now, just one return URL for all packages
+    const returnUrl = "https://packages.stepituplearning.ca/pages/success";
 
     return {
       statusCode: 200,

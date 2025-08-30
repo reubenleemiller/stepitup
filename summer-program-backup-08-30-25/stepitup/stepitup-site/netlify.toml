@@ -1,0 +1,15 @@
+[build]
+  command = ""
+  functions = "netlify/functions"
+  publish = "."
+
+[build.environment]
+SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+SECRETS_SCAN_OMIT_VALUES = "dvsruqzfdzjyahknixmk.supabase.co"
+
+[functions]
+  directory = "netlify/functions"
+
+[[scheduled]]
+  function = "ping-supabase"
+  cron = "0 8 1,7,13,19,25 * *"

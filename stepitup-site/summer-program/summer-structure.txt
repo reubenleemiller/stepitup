@@ -1,0 +1,58 @@
+.
+├── _headers
+├── assets
+│   ├── Colorful Vibrant Fun Illustrated Retro School Fair Event Poster (1).png
+│   ├── IMG_4195.png
+│   ├── Summer_Reading_Bingo-PREVIEW.pdf
+│   ├── logo.png
+│   └── store.css
+├── backup
+│   └── get-availability.v1.backup.js
+├── index.html
+├── netlify
+│   └── functions
+│       ├── featured-reviews-carousel.js
+│       ├── generate-coupon.js
+│       ├── get-availability.js
+│       ├── list-reviews.mjs
+│       ├── listResources.mjs
+│       ├── newsletter-signup.js
+│       ├── newsletter.js
+│       ├── ping-supabase.js
+│       ├── reset-ticket.js
+│       ├── reviews-summary.mjs
+│       ├── submit-review.mjs
+│       └── ticket.js
+├── netlify.toml
+├── package-lock.json
+├── package.json
+├── pages
+│   ├── about.html
+│   ├── admin-reset.html
+│   ├── contact.html
+│   ├── cookie-policy.html
+│   ├── coupon-request.html
+│   ├── extras.html
+│   ├── privacy-policy.html
+│   ├── refund-policy.html
+│   ├── resources.html
+│   ├── reviews.html
+│   ├── terms-of-service.html
+│   └── thankyou.html
+├── scripts
+│   ├── calcom-60min.js
+│   ├── calcom-meet-and-greet.js
+│   ├── contact-form.js
+│   ├── coupon-request.js
+│   ├── faq.js
+│   ├── featured-reviews.js
+│   ├── folder-ui.js
+│   ├── newsletter-gate.js
+│   ├── newsletter.js
+│   ├── preloader.js
+│   ├── renderCalendar.js
+│   ├── reviews-animated-inputs.js
+│   └── reviews.js
+└── style.css
+
+7 directories, 49 files

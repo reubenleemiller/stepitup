@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" class="preloader-lock">
+<head>
+<script>
+  document.documentElement.classList.add('preloader-lock');
+</script>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RK4KPSSPT7"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-RK4KPSSPT7');
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Resource Store - Step it Up Learning</title>
+<link href="style.css" rel="stylesheet"/>
+<link rel="stylesheet" href="assets/store.css">
+</head>
+<body class="locked">
+<div id="site-preloader" class="">
+  <div class="preloader-spinner-wrapper">
+    <div class="custom-spinner">
+      <div></div>
+    </div>
+    <img src="assets/logo.png" alt="Step it Up Learning Logo" class="preloader-logo" />
+  </div>
+</div>
+<header class="sticky">
+<a href="https://stepituplearning.ca"><img alt="Step it Up Learning Logo" class="logo" src="assets/logo.png"/></a>
+<button class="hamburger" onclick="toggleMenu()" data-ignore-preloader>☰</button>
+<nav id="nav-menu">
+<ul>
+<li><a href="https://stepituplearning.ca">Home</a></li>
+<li><a href="https://booking.stepituplearning.ca">Tutoring</a></li>
+<li><a href="https://packages.stepituplearning.ca">Packages</a></li>
+<li><a href="https://stepituplearning.ca/pages/extras.html">Extras</a></li>
+<li><a href="https://stepituplearning.ca/pages/reviews.html">Reviews</a></li>
+<li><a href="https://stepituplearning.ca/pages/about.html">About</a></li>
+<li><a href="https://stepituplearning.ca/pages/contact.html">Contact</a></li>
+</ul>
+</nav>
+</header>
+  <div class="store-container">
+    <div class="store-header">
+      <div class="store-title-section">
+        <div class="title-content">
+          <h1><i class="fas fa-store"></i> Step It Up Resource Store</h1>
+          <p class="store-description">Premium educational resources to support your learning journey</p>
+        </div>
+        
+        <!-- Cart Dropdown Button -->
+        <div class="cart-dropdown-container">
+          <button id="cart-dropdown-btn" class="cart-dropdown-btn">
+            <i class="fas fa-shopping-cart"></i>
+            <span id="cart-dropdown-count" class="cart-dropdown-badge">0</span>
+          </button>
+          
+          <!-- Cart Dropdown Menu -->
+          <div id="cart-dropdown-menu" class="cart-dropdown-menu">
+            <div class="cart-dropdown-header">
+              <h3>Shopping Cart</h3>
+              <button id="close-cart-dropdown" class="close-dropdown-btn">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div id="cart-dropdown-content" class="cart-dropdown-content">
+              <div id="cart-dropdown-empty" class="cart-dropdown-empty">
+                <i class="fas fa-shopping-cart"></i>
+                <p>Your cart is empty</p>
+              </div>
+              
+              <div id="cart-dropdown-items" class="cart-dropdown-items" style="display: none;">
+                <ul id="cart-dropdown-list"></ul>
+                <div class="cart-dropdown-total">
+                  <span>Total: $<span id="cart-dropdown-total">0.00</span></span>
+                </div>
+                <div class="cart-dropdown-actions">
+                  <button id="cart-dropdown-checkout" class="dropdown-checkout-btn">
+                    <i class="fas fa-credit-card"></i> Checkout
+                  </button>
+                  <button id="view-full-cart" class="view-cart-btn">
+                    <i class="fas fa-eye"></i> View Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="loading-spinner" class="loading-container">
+      <div class="store-spinner"></div>
+      <p>Loading available resources...</p>
+    </div>
+    
+    <div id="error-message" class="error-message" style="display: none;">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Unable to load resources</h3>
+      <p>Please check your internet connection and try again.</p>
+      <button onclick="location.reload()" class="retry-btn">
+        <i class="fas fa-refresh"></i> Retry
+      </button>
+    </div>
+    
+    <div id="products-section" style="display: none;">
+      <!-- Featured Products Banner - DISABLED -->
+      <div id="featured-banner" class="featured-banner" style="display: none !important;">
+        <div class="banner-header">
+          <h2><i class="fas fa-star"></i> Featured Resources</h2>
+          <p>Hand-picked educational materials for exceptional learning</p>
+        </div>
+        <div id="featured-products" class="featured-products-grid"></div>
+      </div>
+      
+      <div class="products-filter">
+        <div class="filter-options">
+          <button class="filter-btn active" data-category="all">
+            <i class="fas fa-th"></i> All Resources
+          </button>
+          <button class="filter-btn" data-category="worksheets">
+            <i class="fas fa-file-alt"></i> Worksheets
+          </button>
+          <button class="filter-btn" data-category="guides">
+            <i class="fas fa-book"></i> Study Guides
+          </button>
+          <button class="filter-btn" data-category="templates">
+            <i class="fas fa-clipboard"></i> Templates
+          </button>
+        </div>
+      </div>
+      
+      <div id="products-list" class="products-list"></div>
+    </div>
+    
+    <div class="cart" id="cart-section" style="display: none;">
+      <div class="cart-header">
+        <h2><i class="fas fa-shopping-cart"></i> Shopping Cart</h2>
+        <span id="cart-count" class="cart-badge">0</span>
+      </div>
+      
+      <div id="cart-empty" class="empty-cart">
+        <i class="fas fa-shopping-cart"></i>
+        <p>Your cart is empty</p>
+        <small>Add some resources to get started!</small>
+      </div>
+      
+      <div id="cart-content" style="display: none;">
+        <ul id="cart-items"></ul>
+        <div class="cart-summary">
+          <div class="cart-subtotal">
+            <span>Subtotal:</span>
+            <span class="price">$<span id="cart-subtotal">0.00</span></span>
+          </div>
+          <div class="cart-total">
+            <span>Total:</span>
+            <span class="price">$<span id="cart-total">0.00</span></span>
+          </div>
+        </div>
+        <div class="cart-actions">
+          <button id="checkout-btn" class="checkout-btn">
+            <span id="checkout-text"><i class="fas fa-credit-card"></i> Secure Checkout</span>
+            <span id="checkout-spinner" class="store-spinner" style="display: none;"></span>
+          </button>
+          <button id="clear-cart-btn" class="clear-cart-btn">
+            <i class="fas fa-trash"></i> Clear Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Preview Modal -->
+  <div id="preview-modal" class="preview-modal">
+    <div class="preview-modal-content">
+      <div class="preview-modal-header">
+        <h3 id="preview-modal-title">Resource Preview</h3>
+        <button id="close-preview-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="preview-modal-body">
+        <div id="preview-loading" class="preview-loading">
+          <div class="preview-spinner"></div>
+          <p>Loading preview...</p>
+        </div>
+        
+        <div id="preview-content" class="preview-content">
+          <div id="preview-images" class="preview-images"></div>
+          <div id="preview-pdf" class="preview-pdf"></div>
+          <div id="preview-video" class="preview-video"></div>
+        </div>
+        
+        <div id="preview-error" class="preview-error" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Unable to load preview</p>
+        </div>
+      </div>
+      
+      <div class="preview-modal-footer">
+        <p class="preview-note">
+          <i class="fas fa-info-circle"></i>
+          This is a limited preview. Purchase to access the complete resource.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviews Modal -->
+  <div id="reviews-modal" class="reviews-modal">
+    <div class="reviews-modal-content">
+      <div class="reviews-modal-header">
+        <h3 id="reviews-modal-title">Customer Reviews</h3>
+        <button id="close-reviews-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="reviews-modal-body">
+        <!-- Review Stats -->
+        <div id="review-stats" class="review-stats">
+          <div class="overall-rating">
+            <div class="rating-score">
+              <span id="average-rating">0.0</span>
+              <div id="rating-stars" class="rating-stars"></div>
+            </div>
+            <p class="rating-text">
+              <span id="total-reviews">0</span> reviews
+            </p>
+          </div>
+          
+          <div class="rating-breakdown">
+            <div class="rating-bar-container">
+              <div class="rating-bar-row">
+                <span>5★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="5"></div>
+                </div>
+                <span class="rating-count" data-rating="5">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>4★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="4"></div>
+                </div>
+                <span class="rating-count" data-rating="4">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>3★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="3"></div>
+                </div>
+                <span class="rating-count" data-rating="3">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>2★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="2"></div>
+                </div>
+                <span class="rating-count" data-rating="2">0</span>
+              </div>
+              <div class="rating-bar-row">
+                <span>1★</span>
+                <div class="rating-bar">
+                  <div class="rating-bar-fill" data-rating="1"></div>
+                </div>
+                <span class="rating-count" data-rating="1">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Review Filters -->
+        <div class="review-filters">
+          <button class="review-filter-btn active" data-sort="recent">
+            <i class="fas fa-clock"></i> Most Recent
+          </button>
+          <button class="review-filter-btn" data-sort="rating_high">
+            <i class="fas fa-star"></i> Highest Rated
+          </button>
+          <button class="review-filter-btn" data-sort="helpful">
+            <i class="fas fa-thumbs-up"></i> Most Helpful
+          </button>
+        </div>
+
+        <!-- Reviews List -->
+        <div id="reviews-loading" class="reviews-loading">
+          <div class="reviews-spinner"></div>
+          <p>Loading reviews...</p>
+        </div>
+        
+        <div id="reviews-list" class="reviews-list"></div>
+        
+        <div id="reviews-error" class="reviews-error" style="display: none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Unable to load reviews</p>
+        </div>
+
+        <div id="no-reviews" class="no-reviews" style="display: none;">
+          <i class="fas fa-comment-slash"></i>
+          <p>No reviews yet</p>
+          <small>Be the first to review this resource!</small>
+        </div>
+
+        <!-- Load More Button -->
+        <div class="reviews-pagination">
+          <button id="load-more-reviews" class="load-more-btn" style="display: none;">
+            <i class="fas fa-chevron-down"></i> Load More Reviews
+          </button>
+        </div>
+      </div>
+      
+      <div class="reviews-modal-footer">
+        <button id="write-review-btn" class="write-review-btn">
+          <i class="fas fa-edit"></i> Write a Review
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Description Modal -->
+  <div id="description-modal" class="description-modal">
+    <div class="description-modal-content">
+      <div class="description-modal-header">
+        <h3 id="description-modal-title">Product Details</h3>
+        <button id="close-description-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="description-modal-body">
+        <div class="product-details">
+          <div class="product-meta">
+            <span id="description-product-category" class="product-category-badge"></span>
+            <span id="description-product-price" class="product-price-display"></span>
+          </div>
+          <div id="description-content" class="description-content"></div>
+        </div>
+      </div>
+
+      <div class="description-modal-footer">
+        <button id="add-to-cart-from-modal" class="add-to-cart-modal-btn">
+          <i class="fas fa-shopping-cart"></i> Add to Cart
+        </button>
+        <div class="modal-secondary-actions">
+          <button id="preview-from-modal" class="modal-action-btn">
+            <i class="fas fa-eye"></i> Preview
+          </button>
+          <button id="reviews-from-modal" class="modal-action-btn">
+            <i class="fas fa-star"></i> Reviews
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Write Review Modal -->
+  <div id="write-review-modal" class="write-review-modal">
+    <div class="write-review-modal-content">
+      <div class="write-review-modal-header">
+        <h3>Write a Review</h3>
+        <button id="close-write-review-modal" class="close-modal-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="write-review-modal-body">
+        <form id="review-form">
+          <div class="form-group">
+            <label for="reviewer-name">Your Name *</label>
+            <input type="text" id="reviewer-name" name="name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="reviewer-email">Email Address *</label>
+            <input type="email" id="reviewer-email" name="email" required>
+            <small>Email will not be displayed publicly</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Rating *</label>
+            <div class="rating-input">
+              <div class="star-rating">
+                <i class="fas fa-star" data-rating="1"></i>
+                <i class="fas fa-star" data-rating="2"></i>
+                <i class="fas fa-star" data-rating="3"></i>
+                <i class="fas fa-star" data-rating="4"></i>
+                <i class="fas fa-star" data-rating="5"></i>
+              </div>
+              <input type="hidden" id="rating-value" name="rating" required>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="review-title">Review Title</label>
+            <input type="text" id="review-title" name="title" placeholder="Summarize your experience">
+          </div>
+          
+          <div class="form-group">
+            <label for="review-text">Your Review</label>
+            <textarea id="review-text" name="review" rows="5" placeholder="Share your thoughts about this resource..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="purchase-verification">Purchase Verification (Optional)</label>
+            <input type="text" id="purchase-verification" name="session_id" placeholder="Stripe session ID from your receipt">
+            <small>Enter your purchase confirmation ID to verify your purchase</small>
+          </div>
+        </form>
+      </div>
+      
+      <div class="write-review-modal-footer">
+        <button type="button" id="cancel-review" class="cancel-review-btn">Cancel</button>
+        <button type="submit" form="review-form" id="submit-review" class="submit-review-btn">
+          <span class="btn-text">Submit Review</span>
+          <div class="btn-spinner" style="display: none;"></div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/store.js"></script>
+<footer class="footer-flex">
+<div class="footer-links">
+<p>© 2025 Step it Up Learning</p>
+<a href="https://stepituplearning.ca">Home</a>
+<a href="https://stepituplearning.ca/pages/about.html">About</a>
+<a href="https://stepituplearning.ca/pages/terms-of-service.html">Terms Of Service</a>
+<a href="https://stepituplearning.ca/pages/privacy-policy.html">Privacy Policy</a>
+<a href="https://stepituplearning.ca/pages/refund-policy.html">Refund Policy</a>
+<a href="https://stepituplearning.ca/pages/extras.html">Extras</a>
+<a href="https://stepituplearning.ca/pages/reviews.html">Reviews</a>
+<a href="https://stepituplearning.ca/pages/contact.html">Contact</a>
+<div class="footer-payment-icons">
+  <i class="fab fa-cc-visa"></i>
+  <i class="fab fa-cc-mastercard"></i>
+  <i class="fab fa-cc-stripe"></i>
+  <i class="fab fa-paypal"></i>
+</div>
+</div>
+<div class="footer-links">
+<p>Sessions and Packages</p>
+<a class="calcom-button" data-cal-link="rebeccamiller/60min" data-cal-namespace="60min" data-cal-config='{"layout":"month_view"}'>60-min Sessions</a>
+<a data-cal-link="rebeccamiller/assessment" data-cal-namespace="assessment" data-cal-config='{"layout":"month_view"}'>Meet &amp; Greet</a>
+<a href="https://packages.stepituplearning.ca/">Packages</a>
+</div>
+<div class="footer-links">
+<p>Contact Info</p>
+<a href="mailto:info@stepituplearning.ca"><i class="fa-solid fa-envelope"></i>&nbsp;info@stepituplearning.ca</a>
+<a href="tel:4035984840"><i class="fa-solid fa-phone"></i>&nbsp;+1 (403) 598-4840</a>
+</div>
+<div class="footer-links">
+<p>Find us on social media</p>
+<div style="display:flex; flex-direction: row !important;">
+<a href="https://www.facebook.com/people/Step-It-Up-Learning/61577924427778/"><i class="fa-brands fa-facebook" style="font-size:25px; margin-right: 0.5rem;"></i></a>
+<a href="https://www.instagram.com/stepituplearning/"><i class="fa-brands fa-instagram" style="font-size:25px; margin-left: 0.5rem;"></i></a>
+</div>
+</div>
+<div class="footer-contact-form">
+    <h3>Send Us a Message</h3>
+    <form id="contact-form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="contact" />
+      <input type="hidden" name="bot-field" />
+
+      <input name="name" placeholder="Your Name" required type="text" />
+      <input name="email" placeholder="Your Email" required type="email" />
+      <textarea name="message" placeholder="Your Message" required></textarea>
+
+      <button type="submit" id="submit-btn">
+  <span class="btn-text">Send Message</span>
+  <span class="spinner" aria-hidden="true"></span>
+</button>
+    </form>
+</div>
+</footer>
+<script src="scripts/preloader.js"></script>
+<script src="scripts/calcom-60min.js"></script>
+<script src="scripts/calcom-meet-and-greet.js"></script>
+<script src="scripts/contact-form.js"></script>
+<script>
+  function toggleMenu() {
+    const nav = document.getElementById("nav-menu");
+    nav.classList.toggle("open");
+  }
+</script>
+<!-- Cookie Consent Popup -->
+<div id="cookie-consent-banner" aria-live="polite">
+  <div class="cookie-consent-popup" role="dialog" aria-modal="true" aria-labelledby="cookie-title">
+    <h3 id="cookie-title">Cookies & Privacy</h3>
+    <p>
+      We use cookies to enhance your experience.
+      Read our <a href="https://www.stepituplearning.ca/pages/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a> and
+      <a href="https://www.stepituplearning.ca/pages/cookie-policy" target="_blank" rel="noopener">Cookie Policy</a>.
+    </p>
+    <div class="cookie-actions">
+      <button id="cookie-accept">Accept</button>
+      <button id="cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days*24*60*60*1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+  }
+
+  function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i=0;i < ca.length;i++) {
+      let c = ca[i];
+      while (c.charAt(0)==' ') c = c.substring(1,c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+  }
+
+  window.addEventListener('DOMContentLoaded', function() {
+    const banner = document.getElementById('cookie-consent-banner');
+    if (!getCookie('cookie_consent')) {
+      banner.classList.add('show');
+    }
+    document.getElementById('cookie-accept').onclick = function() {
+      setCookie('cookie_consent', 'accepted', 365);
+      banner.classList.remove('show');
+    };
+    document.getElementById('cookie-decline').onclick = function() {
+      setCookie('cookie_consent', 'declined', 365);
+      banner.classList.remove('show');
+    };
+  });
+</script>
+</body>
+</html>

@@ -301,9 +301,12 @@ body {
 
 .error-message i {
   font-size: 3em;
-  color: #f6ad55;
-  margin-bottom: 1em;
+  color: #fff;
 }
+.fa-exclamation-triangle:before, .fa-triangle-exclamation:before, .fa-warning:before {
+  color: #E53E3E;
+}
+
 
 .error-message h3 {
   margin: 0.5em 0;
