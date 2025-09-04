@@ -32,11 +32,12 @@ class AdminManager {
   checkAuthStatus() {
     const token = localStorage.getItem('admin_token');
     const expiry = localStorage.getItem('admin_token_expiry');
-    
+
     if (token && expiry && new Date().getTime() < parseInt(expiry)) {
       this.isAuthenticated = true;
       this.showAdminPanel();
-      this.loadProducts(); // Load products when authenticated
+      this.loadProducts();
+      this.loadAdminLogs();
     } else {
       this.clearAuthData();
       this.showLoginModal();
@@ -91,6 +92,21 @@ class AdminManager {
 
     // Text formatting toolbar
     this.setupFormattingToolbar();
+
+    // Admin logs controls
+    this.setupAdminLogsControls();
+
+    const reviewsRefresh = document.getElementById('reviews-refresh-btn');
+    if (reviewsRefresh) {
+      reviewsRefresh.addEventListener('click', async () => {
+        reviewsRefresh.classList.add('loading');
+        reviewsRefresh.disabled = true;
+        try { await this.loadAdminReviews(); } finally {
+          reviewsRefresh.disabled = false;
+          reviewsRefresh.classList.remove('loading');
+        }
+      });
+    }
   }
 
   /**
@@ -176,10 +192,17 @@ class AdminManager {
       
       this.isAuthenticated = true;
       
+      // Store session info if provided
+      if (result.sessionToken) localStorage.setItem('admin_session_token', result.sessionToken);
+      if (result.sessionId) localStorage.setItem('admin_session_id', String(result.sessionId));
+      if (result.sessionExpiresAt) localStorage.setItem('admin_session_expires_at', result.sessionExpiresAt);
+
       // Success animation and transition
       setTimeout(() => {
         this.hideLoginModal();
         this.showAdminPanel();
+        this.loadProducts();
+        this.loadAdminLogs();
       }, 500);
 
     } catch (error) {
@@ -385,11 +408,14 @@ class AdminManager {
     const dropZone = document.querySelector(`[data-upload-type="${uploadType}"]`);
     const fileInfo = dropZone.querySelector('.file-info');
     const dropContent = dropZone.querySelector('.drop-zone-content');
+    const fileInput = dropZone.querySelector('input[type="file"]');
 
     // Hide drop content, show file info
     dropContent.style.display = 'none';
     fileInfo.style.display = 'block';
     fileInfo.classList.add('show');
+    // Prevent invisible input from intercepting clicks
+    if (fileInput) fileInput.style.pointerEvents = 'none';
 
     // For resource images, show multiple files
     if (uploadType === 'resource-images') {
@@ -405,13 +431,18 @@ class AdminManager {
               Ready to upload
             </div>
           </div>
-          <button type="button" onclick="adminManager.removeFile('${uploadType}')" 
-                  style="background: #e53e3e; color: white; border: none; border-radius: 4px; 
+          <button type="button" onclick="adminManager.removeFile('${uploadType}', event)"
+                  style="background: #e53e3e; color: white; border: none; border-radius: 4px;
                          padding: 0.5rem; cursor: pointer; transition: all 0.2s ease;">
             <i class="fas fa-times"></i>
           </button>
         </div>
       `;
+      // Allow adding more images; keep input enabled
+      if (fileInput) fileInput.disabled = false;
+      // Bind remove button
+      const btn = fileInfo.querySelector('button');
+      if (btn) btn.addEventListener('click', (ev) => this.removeFile(uploadType, ev));
     } else {
       // Single file display
       fileInfo.innerHTML = `
@@ -425,41 +456,76 @@ class AdminManager {
               ${this.formatFileSize(file.size)} • ${file.type.split('/')[1].toUpperCase()}
             </div>
           </div>
-          <button type="button" onclick="adminManager.removeFile('${uploadType}')" 
-                  style="background: #e53e3e; color: white; border: none; border-radius: 4px; 
+          <button type="button" onclick="adminManager.removeFile('${uploadType}', event)"
+                  style="background: #e53e3e; color: white; border: none; border-radius: 4px;
                          padding: 0.5rem; cursor: pointer; transition: all 0.2s ease;">
             <i class="fas fa-times"></i>
           </button>
         </div>
       `;
+      // Disable input to avoid accidental picker when file-info is shown
+      if (fileInput) fileInput.disabled = true;
+      // Bind remove button
+      const btn = fileInfo.querySelector('button');
+      if (btn) btn.addEventListener('click', (ev) => this.removeFile(uploadType, ev));
     }
   }
 
   /**
    * Remove uploaded file
    */
-  removeFile(uploadType) {
+  removeFile(uploadType, e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const dropZone = document.querySelector(`[data-upload-type="${uploadType}"]`);
+    if (!dropZone) return;
     const fileInfo = dropZone.querySelector('.file-info');
     const dropContent = dropZone.querySelector('.drop-zone-content');
     const fileInput = dropZone.querySelector('input[type="file"]');
 
     // Reset UI
-    fileInfo.style.display = 'none';
-    fileInfo.classList.remove('show');
-    dropContent.style.display = 'block';
+    if (fileInfo) {
+      fileInfo.style.display = 'none';
+      fileInfo.classList.remove('show');
+    }
+    if (dropContent) dropContent.style.display = 'block';
 
-    // Clear file data
+    // Clear tracked files
     if (uploadType === 'resource-images') {
       this.uploadedFiles[uploadType] = [];
     } else {
       this.uploadedFiles[uploadType] = null;
     }
-    fileInput.value = '';
+
+    // Robustly clear native file input and re-bind listeners
+    if (fileInput) {
+      // Ensure enabled and clickable again
+      fileInput.disabled = false;
+      fileInput.style.pointerEvents = 'auto';
+      try { fileInput.value = ''; } catch {}
+      // If still has files, replace node
+      let currentInput = fileInput;
+      if (fileInput.files && fileInput.files.length) {
+        const newInput = fileInput.cloneNode(true);
+        newInput.value = '';
+        newInput.style.pointerEvents = 'auto';
+        // Re-bind change handler
+        newInput.addEventListener('change', (ev) => this.handleFileSelect(ev, uploadType));
+        fileInput.parentNode.replaceChild(newInput, fileInput);
+        currentInput = newInput;
+      } else {
+        // Make sure change handler exists in case it was removed/disabled
+        fileInput.addEventListener('change', (ev) => this.handleFileSelect(ev, uploadType));
+      }
+      // Re-wire browse link to current input
+      const browseLink = dropZone.querySelector('.browse-link');
+      if (browseLink) {
+        browseLink.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); currentInput.click(); };
+      }
+    }
 
     // Reset progress
     const progress = dropZone.querySelector('.upload-progress');
-    progress.style.display = 'none';
+    if (progress) progress.style.display = 'none';
     dropZone.classList.remove('uploading');
   }
 
@@ -694,6 +760,9 @@ class AdminManager {
 
             response = await fetch(endpoint, {
               method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              },
               body: formData,
               signal: controller.signal
               // Don't set Content-Type header - let browser set it with boundary
@@ -786,8 +855,9 @@ class AdminManager {
       this.currentEditingProduct = null;
       this.updateFormTitle();
       
-      // Refresh products list
+      // Refresh products and all logs
       await this.loadProducts();
+      await this.loadAdminLogs();
 
     } catch (error) {
       console.error('Product save error:', error);
@@ -1364,9 +1434,10 @@ class AdminManager {
       // Hide confirmation modal
       this.hideDeleteConfirmation();
       
-      // Reload products
+      // Reload products and refresh all logs
       await this.loadProducts();
-      
+      await this.loadAdminLogs();
+
       // Show delete success message
       this.showDeleteSuccessModal();
 
@@ -1698,6 +1769,444 @@ class AdminManager {
 
     // Check if position is between the markers
     return nextEnd !== -1 && position >= lastStart && position <= nextEnd;
+  }
+
+  // Logs: set up controls
+  setupAdminLogsControls() {
+    const sessionsReset = document.getElementById('sessions-reset-btn');
+    const sessionsDownload = document.getElementById('sessions-download-btn');
+    const activityReset = document.getElementById('activity-reset-btn');
+    const activityDownload = document.getElementById('activity-download-btn');
+
+    if (sessionsReset) {
+      sessionsReset.addEventListener('click', async () => {
+        sessionsReset.classList.add('loading');
+        sessionsReset.disabled = true;
+        try {
+          const keepToken = localStorage.getItem('admin_session_token');
+          const keepId = localStorage.getItem('admin_session_id');
+          await fetch('/.netlify/functions/admin-logs?type=sessions', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ keep_session_token: keepToken, keep_id: keepId })
+          });
+          await this.loadAdminSessions();
+        } catch (e) {
+          console.error('Reset sessions failed:', e);
+        } finally {
+          sessionsReset.disabled = false;
+          sessionsReset.classList.remove('loading');
+        }
+      });
+    }
+
+    if (sessionsDownload) {
+      sessionsDownload.addEventListener('click', async () => {
+        sessionsDownload.classList.add('loading');
+        sessionsDownload.disabled = true;
+        try {
+          await this.downloadLog('sessions', 'admin-sessions.csv');
+        } finally {
+          sessionsDownload.disabled = false;
+          sessionsDownload.classList.remove('loading');
+        }
+      });
+    }
+
+    if (activityReset) {
+      activityReset.addEventListener('click', async () => {
+        activityReset.classList.add('loading');
+        activityReset.disabled = true;
+        try {
+          await fetch('/.netlify/functions/admin-logs?type=activity', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          await this.loadAdminActivity();
+        } catch (e) {
+          console.error('Reset activity failed:', e);
+        } finally {
+          activityReset.disabled = false;
+          activityReset.classList.remove('loading');
+        }
+      });
+    }
+
+    if (activityDownload) {
+      activityDownload.addEventListener('click', async () => {
+        activityDownload.classList.add('loading');
+        activityDownload.disabled = true;
+        try {
+          await this.downloadLog('activity', 'admin-activity.csv');
+        } finally {
+          activityDownload.disabled = false;
+          activityDownload.classList.remove('loading');
+        }
+      });
+    }
+  }
+
+  // Logs: orchestrator
+  async loadAdminLogs() {
+    await Promise.all([this.loadAdminSessions(), this.loadAdminActivity(), this.loadAdminReviews()]);
+  }
+
+  async loadAdminSessions() {
+    const tbody = document.getElementById('sessions-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const res = await fetch(`/.netlify/functions/admin-logs?type=sessions&_ts=${Date.now()}` , {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
+        cache: 'no-store'
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load sessions');
+      this.renderSessionsTable(json.sessions || []);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">${this.escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
+  async loadAdminActivity() {
+    const tbody = document.getElementById('activity-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const res = await fetch(`/.netlify/functions/admin-logs?type=activity&_ts=${Date.now()}` , {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
+        cache: 'no-store'
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load activity');
+      this.renderActivityTable(json.activity || []);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">${this.escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
+  renderSessionsTable(rows) {
+    const tbody = document.getElementById('sessions-tbody');
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No sessions found</td></tr>';
+      return;
+    }
+    const storedToken = localStorage.getItem('admin_session_token');
+    const storedId = localStorage.getItem('admin_session_id');
+    tbody.innerHTML = rows.map(r => {
+      const isCurrent = (storedToken && r.session_token === storedToken) || (storedId && String(r.id) === String(storedId));
+      const status = r.is_active ? (isCurrent ? '<span class="status-badge active">Active</span> <span class="current-session-badge">This session</span>' : '<span class="status-badge active">Active</span>') : '<span class="status-badge inactive">Inactive</span>';
+      const uaShort = (r.user_agent || '').slice(0, 60) + ((r.user_agent || '').length > 60 ? '…' : '');
+      return `
+      <tr${isCurrent ? ' class="is-current-session"' : ''}>
+        <td>${this.escapeHtml(r.username || '')}</td>
+        <td>${this.escapeHtml(r.ip_address || '')}</td>
+        <td title="${this.escapeHtml(r.user_agent || '')}">${this.escapeHtml(uaShort)}</td>
+        <td>${this.formatDateTime(r.created_at)}</td>
+        <td>${this.formatDateTime(r.expires_at)}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  async loadAdminReviews() {
+    const tbody = document.getElementById('reviews-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    try {
+      const res = await fetch('/.netlify/functions/admin-reviews', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load reviews');
+      this.renderReviewsTable(json.reviews || []);
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">${this.escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
+  renderActivityTable(rows) {
+    const tbody = document.getElementById('activity-tbody');
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No activity found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${this.formatDateTime(r.created_at)}</td>
+        <td>${this.escapeHtml(r.username || '')}</td>
+        <td>${this.escapeHtml(r.action || '')}</td>
+        <td>${this.escapeHtml(r.resource_type || '')}</td>
+        <td>${this.escapeHtml((r.resource_id || (r.resource_type === 'product' && r.details && (r.details.product_id ?? r.details.id))) || '')}</td>
+        <td>${this.escapeHtml(r.ip_address || '')}</td>
+      </tr>
+    `).join('');
+  }
+
+  formatDateTime(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleString();
+  }
+
+  renderReviewsTable(rows) {
+    const tbody = document.getElementById('reviews-tbody');
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No reviews found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr data-review-id="${r.id}">
+        <td>${this.formatDateTime(r.created_at)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <img src="${this.escapeHtml(r.image_url || '')}" alt="review" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#e2e8f0;" />
+            <button class="control-btn change-image-btn">
+              <span class="btn-text"><i class="fas fa-image"></i> Change</span>
+              <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            </button>
+            <input type="file" accept="image/*" class="hidden-file-input" style="display:none" />
+          </div>
+        </td>
+        <td>
+          <input type="text" class="reviewer-name-input" value="${this.escapeHtml(r.name || '')}" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;" />
+          <div class="inline-stars" data-rating="${r.rating ?? 0}">
+            ${[1,2,3,4,5].map(v => `<i data-value="${v}" class="fa-star ${v <= (r.rating||0) ? 'fas filled' : 'far'}"></i>`).join('')}
+          </div>
+        </td>
+        <td>
+          <div style="display:flex;gap:.5rem;align-items:center;">
+            <textarea class="review-text-input" rows="2" style="flex:1;width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;">${this.escapeHtml(r.review || '')}</textarea>
+            <button class="control-btn expand-review-btn" title="Expand">
+              <span class="btn-text"><i class="fas fa-up-right-and-down-left-from-center"></i></span>
+              <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            </button>
+          </div>
+        </td>
+        <td>
+          <label class="checkbox-label"><input type="checkbox" class="featured-toggle" ${r.featured ? 'checked' : ''}><span class="checkbox-custom"></span> Featured</label>
+        </td>
+        <td>
+          <button class="control-btn save-review-btn">
+            <span class="btn-text"><i class="fas fa-save"></i> Save</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    // Wire events
+    tbody.querySelectorAll('.change-image-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tr = e.currentTarget.closest('tr');
+        const input = tr.querySelector('.hidden-file-input');
+        input.click();
+      });
+    });
+
+    tbody.querySelectorAll('.hidden-file-input').forEach(input => {
+      input.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const tr = e.target.closest('tr');
+        const btn = tr.querySelector('.change-image-btn');
+        btn.classList.add('loading');
+        btn.disabled = true;
+        try {
+          const id = tr.getAttribute('data-review-id');
+          const form = new FormData();
+          form.append('id', id);
+          form.append('image', file);
+          const res = await fetch('/.netlify/functions/admin-reviews', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
+            body: form
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to upload image');
+          await this.loadAdminReviews();
+        } catch(err) {
+          console.error('Upload image failed:', err);
+        } finally {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+          e.target.value = '';
+        }
+      });
+    });
+
+    // Inline star rating handlers
+    tbody.querySelectorAll('.inline-stars').forEach(wrapper => {
+      wrapper.addEventListener('click', (e) => {
+        const icon = e.target.closest('.fa-star');
+        if (!icon) return;
+        const value = parseInt(icon.getAttribute('data-value'), 10);
+        wrapper.setAttribute('data-rating', String(value));
+        wrapper.querySelectorAll('.fa-star').forEach(i => {
+          const v = parseInt(i.getAttribute('data-value'), 10);
+          i.classList.toggle('fas', v <= value);
+          i.classList.toggle('far', v > value);
+          i.classList.toggle('filled', v <= value);
+        });
+      });
+    });
+
+    tbody.querySelectorAll('.save-review-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const tr = e.currentTarget.closest('tr');
+        const id = tr.getAttribute('data-review-id');
+        const name = tr.querySelector('.reviewer-name-input').value;
+        const review = tr.querySelector('.review-text-input').value;
+        const featured = tr.querySelector('.featured-toggle').checked;
+        const ratingWrapper = tr.querySelector('.inline-stars');
+        const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : undefined;
+        const saveBtn = tr.querySelector('.save-review-btn');
+        saveBtn.classList.add('loading');
+        saveBtn.disabled = true;
+        try {
+          const res = await fetch('/.netlify/functions/admin-reviews', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id, name, review, featured, rating })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to save review');
+        } catch(err) {
+          console.error('Save review failed:', err);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.classList.remove('loading');
+        }
+      });
+    });
+
+    // Expand modal handlers
+    tbody.querySelectorAll('.expand-review-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tr = e.currentTarget.closest('tr');
+        const id = tr.getAttribute('data-review-id');
+        const name = tr.querySelector('.reviewer-name-input').value;
+        const review = tr.querySelector('.review-text-input').value;
+        const ratingWrapper = tr.querySelector('.inline-stars');
+        const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : 0;
+        this.openReviewEditor({ id, name, review, rating });
+      });
+    });
+  }
+
+  openReviewEditor(review) {
+    const modal = document.getElementById('review-editor-modal');
+    if (!modal) return;
+    modal.dataset.reviewId = review.id;
+    const nameInput = document.getElementById('review-editor-name');
+    const textInput = document.getElementById('review-editor-text');
+    const starWrap = document.getElementById('review-editor-rating');
+    nameInput.value = review.name || '';
+    textInput.value = review.review || '';
+    starWrap.setAttribute('data-rating', String(review.rating || 0));
+    starWrap.querySelectorAll('.fa-star').forEach(st => {
+      const v = parseInt(st.getAttribute('data-value'), 10);
+      st.classList.toggle('fas', v <= review.rating);
+      st.classList.toggle('far', v > review.rating);
+      st.classList.toggle('filled', v <= review.rating);
+    });
+
+    // Wire star click once
+    if (!this._modalStarBound) {
+      starWrap.addEventListener('click', (e) => {
+        const icon = e.target.closest('.fa-star');
+        if (!icon) return;
+        const value = parseInt(icon.getAttribute('data-value'), 10);
+        starWrap.setAttribute('data-rating', String(value));
+        starWrap.querySelectorAll('.fa-star').forEach(i => {
+          const v = parseInt(i.getAttribute('data-value'), 10);
+          i.classList.toggle('fas', v <= value);
+          i.classList.toggle('far', v > value);
+          i.classList.toggle('filled', v <= value);
+        });
+      });
+      this._modalStarBound = true;
+    }
+
+    // Close handlers
+    const closeEls = [document.getElementById('review-editor-close'), document.getElementById('review-editor-cancel'), modal.querySelector('.reviews-modal-backdrop')];
+    closeEls.forEach(el => { if (el) el.onclick = () => this.closeReviewEditor(); });
+
+    // Save handler
+    const saveBtn = document.getElementById('review-editor-save');
+    if (saveBtn) {
+      saveBtn.onclick = async () => {
+        saveBtn.classList.add('loading');
+        saveBtn.disabled = true;
+        try {
+          const id = modal.dataset.reviewId;
+          const name = nameInput.value;
+          const reviewText = textInput.value;
+          const rating = parseInt(starWrap.getAttribute('data-rating') || '0', 10);
+          const res = await fetch('/.netlify/functions/admin-reviews', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id, name, review: reviewText, rating })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to save review');
+          this.closeReviewEditor();
+          await this.loadAdminReviews();
+        } catch (err) {
+          console.error('Save from modal failed:', err);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.classList.remove('loading');
+        }
+      };
+    }
+
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+  }
+
+  closeReviewEditor() {
+    const modal = document.getElementById('review-editor-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+  }
+
+  async downloadLog(type, filename) {
+    const res = await fetch(`/.netlify/functions/admin-logs?type=${encodeURIComponent(type)}&mode=download`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
+    });
+    if (!res.ok) {
+      let msg = 'Download failed';
+      try { const j = await res.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    const text = await res.text();
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 

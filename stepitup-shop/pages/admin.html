@@ -6,6 +6,7 @@
     <title>Admin Panel - Step it Up Learning</title>
     <meta name="description" content="Admin panel for managing Step it Up Learning products">
     <link rel="stylesheet" href="../assets/admin.css">
+    <link rel="stylesheet" href="../assets/admin-logs.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
@@ -316,6 +317,108 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Admin Logs Section -->
+                <div class="manage-section" id="admin-logs-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-clipboard-list"></i> Admin Logs</h2>
+                        <p>Recent admin sessions and activity</p>
+                    </div>
+
+                    <div class="manage-content">
+                        <!-- Sessions Log -->
+                        <div class="logs-block">
+                            <div class="logs-header">
+                                <h3><i class="fas fa-user-shield"></i> Admin Sessions</h3>
+                                <div class="logs-actions">
+                                    <button id="sessions-reset-btn" class="control-btn">
+                                        <span class="btn-text"><i class="fas fa-rotate"></i> Reset</span>
+                                        <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                    <button id="sessions-download-btn" class="control-btn">
+                                        <span class="btn-text"><i class="fas fa-download"></i> Download</span>
+                                        <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="logs-table-wrapper">
+                                <table class="logs-table" id="sessions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>IP</th>
+                                            <th>User Agent</th>
+                                            <th>Created</th>
+                                            <th>Expires</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="sessions-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Activity Log -->
+                        <div class="logs-block">
+                            <div class="logs-header">
+                                <h3><i class="fas fa-list-check"></i> Admin Activity</h3>
+                                <div class="logs-actions">
+                                    <button id="activity-reset-btn" class="control-btn">
+                                        <span class="btn-text"><i class="fas fa-rotate"></i> Reset</span>
+                                        <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                    <button id="activity-download-btn" class="control-btn">
+                                        <span class="btn-text"><i class="fas fa-download"></i> Download</span>
+                                        <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="logs-table-wrapper">
+                                <table class="logs-table" id="activity-table">
+                                    <thead>
+                                        <tr>
+                                            <th>When</th>
+                                            <th>Username</th>
+                                            <th>Action</th>
+                                            <th>Resource</th>
+                                            <th>Resource ID</th>
+                                            <th>IP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="activity-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Manage Reviews -->
+                        <div class="logs-block">
+                            <div class="logs-header">
+                                <h3><i class="fas fa-comments"></i> Manage Reviews</h3>
+                                <div class="logs-actions">
+                                    <button id="reviews-refresh-btn" class="control-btn">
+                                        <span class="btn-text"><i class="fas fa-refresh"></i> Refresh</span>
+                                        <span class="btn-spinner" style="display: none;"><i class="fas fa-spinner fa-spin"></i></span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="logs-table-wrapper">
+                                <table class="logs-table" id="reviews-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Created</th>
+                                            <th>Image</th>
+                                            <th>Reviewer</th>
+                                            <th>Text</th>
+                                            <th>Flags</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reviews-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -397,8 +500,46 @@
         </div>
     </div>
 
+    <!-- Review Editor Modal -->
+    <div id="review-editor-modal" class="reviews-modal" style="display:none;">
+      <div class="reviews-modal-backdrop"></div>
+      <div class="reviews-modal-content">
+        <div class="reviews-modal-header">
+          <h3><i class="fas fa-pen"></i> Edit Review</h3>
+          <button class="reviews-modal-close" id="review-editor-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="reviews-modal-body">
+          <div class="reviews-field">
+            <label>Reviewer</label>
+            <input type="text" id="review-editor-name" />
+          </div>
+          <div class="reviews-field">
+            <label>Rating</label>
+            <div class="star-rating" id="review-editor-rating" aria-label="Set rating from 1 to 5">
+              <i data-value="1" class="fa-star far"></i>
+              <i data-value="2" class="fa-star far"></i>
+              <i data-value="3" class="fa-star far"></i>
+              <i data-value="4" class="fa-star far"></i>
+              <i data-value="5" class="fa-star far"></i>
+            </div>
+          </div>
+          <div class="reviews-field">
+            <label>Text</label>
+            <textarea id="review-editor-text" rows="8"></textarea>
+          </div>
+        </div>
+        <div class="reviews-modal-footer">
+          <button class="control-btn reviews-cancel-btn" id="review-editor-cancel">Cancel</button>
+          <button class="control-btn" id="review-editor-save">
+            <span class="btn-text"><i class="fas fa-save"></i> Save</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="../scripts/admin.js"></script>
-    
+
     <script>
     // Enhanced form handling for edit mode
     document.addEventListener('DOMContentLoaded', function() {

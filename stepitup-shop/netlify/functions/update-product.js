@@ -16,7 +16,7 @@ const supabase = createClient(
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
@@ -32,7 +32,9 @@ exports.handler = async (event, context) => {
     console.log('Multipart parse result keys:', result ? Object.keys(result) : 'null');
     if (!result) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid form data' }) };
 
-    const token = result.token;
+    const authHeader = event.headers['authorization'] || event.headers['Authorization'];
+    const headerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.replace('Bearer ', '') : null;
+    const token = headerToken || result.token;
     console.log('Token present:', !!token);
     if (!token) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Authentication token required' }) };
 
@@ -359,6 +361,29 @@ exports.handler = async (event, context) => {
     }
 
     console.log(`Product updated successfully: ${updatedProduct.id} by admin: ${tokenVerification.data.username}`);
+
+    // Log admin activity (update_product)
+    try {
+      const ipRaw = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+      const clientIP = ipRaw ? String(ipRaw).split(',')[0].trim() : null;
+      const userAgent = event.headers['user-agent'] || null;
+      await supabase.from('admin_activity_log').insert({
+        username: tokenVerification.data.username || 'admin',
+        action: 'update_product',
+        resource_type: 'product',
+        details: {
+          product_id: updatedProduct.id,
+          name: updatedProduct.name,
+          category: updatedProduct.category,
+          price: updatedProduct.price,
+          featured: updatedProduct.featured
+        },
+        ip_address: clientIP,
+        user_agent: userAgent
+      });
+    } catch (logErr) {
+      console.warn('Failed to log update_product:', logErr);
+    }
 
     return {
       statusCode: 200,

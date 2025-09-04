@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { verifyAdminToken } = require('./admin-auth');
 
 exports.handler = async (event, context) => {
   // Set CORS headers
@@ -20,8 +21,19 @@ exports.handler = async (event, context) => {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    // Require admin auth for all operations
+    const authHeader = event.headers['authorization'] || event.headers['Authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const tokenVerification = verifyAdminToken(token);
+    if (!tokenVerification.valid) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid or expired token' }) };
+    }
+
     const { httpMethod } = event;
-    
+
     if (httpMethod === 'GET') {
       // Get all products for admin management
       const { data: products, error } = await supabase
@@ -49,7 +61,7 @@ exports.handler = async (event, context) => {
 
     } else if (httpMethod === 'DELETE') {
       const { product_id } = event.queryStringParameters || {};
-      
+
       if (!product_id) {
         return {
           statusCode: 400,
@@ -92,7 +104,7 @@ exports.handler = async (event, context) => {
             .from(table)
             .delete()
             .eq('product_id', product_id);
-          
+
           if (reviewDeleteError && !reviewDeleteError.message.includes('does not exist')) {
             console.warn(`Error deleting from ${table}:`, reviewDeleteError);
           } else if (!reviewDeleteError) {
@@ -225,7 +237,7 @@ exports.handler = async (event, context) => {
             const { error: deleteError } = await supabase.storage
               .from(bucket)
               .remove(paths);
-            
+
             if (deleteError) {
               console.warn(`Error deleting files from ${bucket}:`, deleteError);
             } else {
@@ -256,7 +268,7 @@ exports.handler = async (event, context) => {
       try {
         // In-memory cache clearing (this won't work across serverless functions, but good practice)
         console.log(`Clearing cache for product ${product_id}`);
-        
+
         // If we had Redis access, we'd clear it here, but without working Redis,
         // we rely on cache TTL expiration
       } catch (cacheError) {
@@ -264,26 +276,25 @@ exports.handler = async (event, context) => {
       }
 
       // Log admin activity
-      const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown';
-      const userAgent = event.headers['user-agent'] || 'unknown';
-      
+      const ipRaw = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+      const clientIP = ipRaw ? String(ipRaw).split(',')[0].trim() : null;
+      const userAgent = event.headers['user-agent'] || null;
       try {
-        await supabase.rpc('log_admin_activity', {
-          p_username: 'admin',
-          p_action: 'delete_product',
-          p_resource_type: 'product',
-          p_resource_id: product_id.toString(),
-          p_details: { 
+        await supabase.from('admin_activity_log').insert({
+          username: tokenVerification.data.username || 'admin',
+          action: 'delete_product',
+          resource_type: 'product',
+          details: {
+            product_id: Number(product_id),
             product_name: productData.name,
             files_deleted: filesToDelete.map(f => f.path),
             timestamp: new Date().toISOString()
           },
-          p_ip_address: clientIP,
-          p_user_agent: userAgent
+          ip_address: clientIP,
+          user_agent: userAgent
         });
       } catch (logError) {
         console.warn('Failed to log admin activity:', logError);
-        // Don't fail the request if logging fails
       }
 
       return {
@@ -295,7 +306,7 @@ exports.handler = async (event, context) => {
           deleted_files: filesToDelete.length
         })
       };
-      
+
     } else {
       return {
         statusCode: 405,
@@ -309,9 +320,9 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Internal server error',
-        message: error.message 
+        message: error.message
       })
     };
   }
