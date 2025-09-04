@@ -34,7 +34,7 @@ exports.handler = async (event) => {
       return { statusCode: 401, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid or expired token' }) };
     }
 
-    const url = new URL(event.rawUrl || `${process.env.URL || 'http://localhost'}${event.path.startsWith('/') ? '' : '/'}${event.path}`);
+    const url = new URL(event.rawUrl || `${process.env.URL || 'https://admin.shop.stepituplearning.ca'}${event.path.startsWith('/') ? '' : '/'}${event.path}`);
     const type = url.searchParams.get('type') || 'sessions';
     const mode = url.searchParams.get('mode') || 'list'; // list | download
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '500', 10), 2000);
