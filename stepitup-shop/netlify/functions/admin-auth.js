@@ -18,6 +18,27 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) : null;
 
+function extractClientIp(headers = {}) {
+  const h = Object.create(null);
+  for (const k in headers) h[k.toLowerCase()] = headers[k];
+  const candidates = [
+    h['x-nf-client-connection-ip'],
+    h['cf-connecting-ip'],
+    h['x-real-ip'],
+    h['client-ip'],
+    h['x-forwarded-for']
+  ].filter(Boolean);
+  let raw = candidates.find(Boolean) || '';
+  if (raw.includes(',')) raw = raw.split(',')[0].trim();
+  // Normalize IPv4-mapped IPv6 like ::ffff:1.2.3.4
+  if (/^::ffff:/i.test(raw) && /\d+\.\d+\.\d+\.\d+/.test(raw)) {
+    raw = raw.match(/(\d+\.\d+\.\d+\.\d+)/)[1];
+  }
+  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+  const ipv6 = /^[a-f0-9:]+$/i;
+  return (ipv4.test(raw) || ipv6.test(raw)) ? raw : null;
+}
+
 exports.handler = async (event, context) => {
   // Set CORS headers
   const headers = {
@@ -85,23 +106,50 @@ exports.handler = async (event, context) => {
     if (supabase) {
       const sessionToken = uuidv4();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      const ip = event.headers['x-forwarded-for'] || event.headers['client-ip'] || null;
-      const userAgent = event.headers['user-agent'] || null;
+      const ip = extractClientIp(event.headers);
+      const userAgent = (event.headers && (event.headers['user-agent'] || event.headers['User-Agent'])) || null;
 
-      const { data, error } = await supabase
-        .from('admin_sessions')
-        .insert([
-          {
-            session_token: sessionToken,
-            username,
-            ip_address: ip,
-            user_agent: userAgent,
-            expires_at: expiresAt,
-            is_active: true
-          }
-        ])
-        .select('id, session_token, created_at, expires_at, is_active')
-        .single();
+      let data = null; let error = null;
+      try {
+        ({ data, error } = await supabase
+          .from('admin_sessions')
+          .insert([
+            {
+              session_token: sessionToken,
+              username,
+              ip_address: ip,
+              user_agent: userAgent,
+              expires_at: expiresAt,
+              is_active: true
+            }
+          ])
+          .select('id, session_token, created_at, expires_at, is_active')
+          .single());
+      } catch (e) {
+        error = e;
+      }
+
+      if (error && error.code === '22P02') {
+        // Retry without IP if inet parsing failed
+        try {
+          ({ data, error } = await supabase
+            .from('admin_sessions')
+            .insert([
+              {
+                session_token: sessionToken,
+                username,
+                ip_address: null,
+                user_agent: userAgent,
+                expires_at: expiresAt,
+                is_active: true
+              }
+            ])
+            .select('id, session_token, created_at, expires_at, is_active')
+            .single());
+        } catch (e2) {
+          error = e2;
+        }
+      }
 
       if (error) {
         console.error('Failed creating admin session:', error);
