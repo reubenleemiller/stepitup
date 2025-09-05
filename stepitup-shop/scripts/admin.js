@@ -1799,13 +1799,14 @@ class AdminManager {
         try {
           const keepToken = localStorage.getItem('admin_session_token');
           const keepId = localStorage.getItem('admin_session_id');
-          await fetch(`${functionsUrl('admin-logs')}?type=sessions`, {
+          const qs = new URLSearchParams({ type: 'sessions' });
+          if (keepToken) qs.set('keep_session_token', keepToken);
+          if (keepId) qs.set('keep_id', keepId);
+          await fetch(`${functionsUrl('admin-logs')}?${qs.toString()}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ keep_session_token: keepToken, keep_id: keepId })
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+            }
           });
           await this.loadAdminSessions();
         } catch (e) {

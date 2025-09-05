@@ -105,6 +105,15 @@ exports.handler = async (event, context) => {
 
       if (error) {
         console.error('Failed creating admin session:', error);
+      } else if (!data) {
+        // Some Supabase/PostgREST setups may not return the inserted row reliably
+        // Fetch the session we just created by token to ensure the client receives identifiers
+        const { data: fetched } = await supabase
+          .from('admin_sessions')
+          .select('id, session_token, created_at, expires_at, is_active')
+          .eq('session_token', sessionToken)
+          .maybeSingle();
+        sessionRecord = fetched || null;
       } else {
         sessionRecord = data;
       }

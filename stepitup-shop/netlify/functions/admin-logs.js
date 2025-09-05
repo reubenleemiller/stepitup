@@ -49,9 +49,14 @@ exports.handler = async (event) => {
       try {
         if (event.body) {
           const body = JSON.parse(event.body);
-          keepToken = body.keep_session_token || null;
+          keepToken = body.keep_session_token || body.keep_token || null;
           keepId = body.keep_id || null;
         }
+      } catch {}
+      // Fallback to query params in case DELETE body is stripped by proxy
+      try {
+        keepToken = keepToken || url.searchParams.get('keep_session_token') || url.searchParams.get('keep_token');
+        keepId = keepId || url.searchParams.get('keep_id');
       } catch {}
 
       if (!keepToken && !keepId) {
