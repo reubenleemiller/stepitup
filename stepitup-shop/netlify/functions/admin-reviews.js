@@ -61,7 +61,7 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'PUT') {
       const body = JSON.parse(event.body || '{}');
-      const { id, name, review, featured, rating } = body;
+      const { id, name, review, featured, rating, verified } = body;
       if (!id) return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'id is required' }) };
 
       const updates = {};
@@ -69,6 +69,7 @@ exports.handler = async (event) => {
       if (typeof review === 'string') updates.review = review;
       if (typeof featured === 'boolean') updates.featured = featured;
       if (typeof rating === 'number') updates.rating = Math.max(1, Math.min(5, Math.round(rating)));
+      if (typeof verified === 'boolean') updates.verified = verified;
 
       if (Object.keys(updates).length === 0) {
         return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'No valid fields to update' }) };
@@ -115,8 +116,37 @@ exports.handler = async (event) => {
         } else if (logErr) {
           console.warn('Failed to log update_review:', logErr);
         }
+
+        // Log review_verified when marked verified
+        if (typeof verified === 'boolean' && verified === true) {
+          let logVerifiedErr = null;
+          try {
+            await supabase.from('admin_activity_log').insert({
+              username: data?.username || 'admin',
+              action: 'review_verified',
+              resource_type: 'review',
+              resource_id: id,
+              details: { verified: true },
+              ip_address: clientIP,
+              user_agent: userAgent
+            });
+          } catch (e) { logVerifiedErr = e; }
+          if (logVerifiedErr && logVerifiedErr.code === '22P02') {
+            await supabase.from('admin_activity_log').insert({
+              username: data?.username || 'admin',
+              action: 'review_verified',
+              resource_type: 'review',
+              resource_id: id,
+              details: { verified: true },
+              ip_address: null,
+              user_agent: userAgent
+            });
+          } else if (logVerifiedErr) {
+            console.warn('Failed to log review_verified:', logVerifiedErr);
+          }
+        }
       } catch (logErrOuter) {
-        console.warn('Failed to log update_review (outer):', logErrOuter);
+        console.warn('Failed to log update_review/review_verified (outer):', logErrOuter);
       }
 
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, review: updated }) };

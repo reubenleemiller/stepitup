@@ -1981,7 +1981,7 @@ class AdminManager {
       return;
     }
     tbody.innerHTML = rows.map(r => `
-      <tr data-review-id="${r.id}">
+      <tr data-review-id="${r.id}" data-review-text="${this.escapeHtml(r.review || '')}">
         <td>${this.formatDateTime(r.created_at)}</td>
         <td>
           <div style="display:flex;align-items:center;gap:.5rem;">
@@ -2000,16 +2000,16 @@ class AdminManager {
           </div>
         </td>
         <td>
-          <div style="display:flex;gap:.5rem;align-items:center;">
-            <textarea class="review-text-input" rows="2" style="flex:1;width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;">${this.escapeHtml(r.review || '')}</textarea>
-            <button class="control-btn expand-review-btn" title="Expand">
-              <span class="btn-text"><i class="fas fa-up-right-and-down-left-from-center"></i></span>
-              <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
-            </button>
-          </div>
+          <button class="control-btn edit-text-btn">
+            <span class="btn-text"><i class="fas fa-pen"></i> Edit</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
         </td>
         <td>
-          <label class="checkbox-label"><input type="checkbox" class="featured-toggle" ${r.featured ? 'checked' : ''}><span class="checkbox-custom"></span> Featured</label>
+          <div class="review-flags">
+            <label class="checkbox-label"><input type="checkbox" class="featured-toggle" ${r.featured ? 'checked' : ''}><span class="checkbox-custom"></span> Featured</label>
+            <label class="checkbox-label"><input type="checkbox" class="verified-toggle" ${r.verified ? 'checked' : ''}><span class="checkbox-custom"></span> Verified</label>
+          </div>
         </td>
         <td>
           <button class="control-btn save-review-btn">
@@ -2081,8 +2081,10 @@ class AdminManager {
         const tr = e.currentTarget.closest('tr');
         const id = tr.getAttribute('data-review-id');
         const name = tr.querySelector('.reviewer-name-input').value;
-        const review = tr.querySelector('.review-text-input').value;
+        const reviewInput = tr.querySelector('.review-text-input');
+        const review = reviewInput ? reviewInput.value : undefined;
         const featured = tr.querySelector('.featured-toggle').checked;
+        const verified = tr.querySelector('.verified-toggle').checked;
         const ratingWrapper = tr.querySelector('.inline-stars');
         const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : undefined;
         const saveBtn = tr.querySelector('.save-review-btn');
@@ -2095,7 +2097,7 @@ class AdminManager {
               'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ id, name, review, featured, rating })
+            body: JSON.stringify({ id, name, review, featured, rating, verified })
           });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error || 'Failed to save review');
@@ -2108,15 +2110,15 @@ class AdminManager {
       });
     });
 
-    // Expand modal handlers
-    tbody.querySelectorAll('.expand-review-btn').forEach(btn => {
+    // Open editor from inline button
+    tbody.querySelectorAll('.edit-text-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tr = e.currentTarget.closest('tr');
         const id = tr.getAttribute('data-review-id');
         const name = tr.querySelector('.reviewer-name-input').value;
-        const review = tr.querySelector('.review-text-input').value;
         const ratingWrapper = tr.querySelector('.inline-stars');
         const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : 0;
+        const review = tr.getAttribute('data-review-text') || '';
         this.openReviewEditor({ id, name, review, rating });
       });
     });
