@@ -497,10 +497,8 @@ class StoreManager {
   getProductIcon(category) {
     const iconMap = {
       'worksheets': 'fas fa-file-alt',
-      'guides': 'fas fa-book',
-      'templates': 'fas fa-clipboard',
-      'exercises': 'fas fa-pencil-alt',
-      'assessments': 'fas fa-check-square',
+      'games': 'fa-solid fa-dice',
+      'lessons': 'fa-solid fa-person-chalkboard',
       'default': 'fas fa-graduation-cap'
     };
 
