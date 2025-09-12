@@ -8,11 +8,12 @@ const FUNCTIONS_ORIGIN = (() => {
   try {
     if (window.__FUNCTIONS_ORIGIN__) return String(window.__FUNCTIONS_ORIGIN__).replace(/\/$/, '');
   } catch (_) {}
-  const { protocol, hostname } = window.location;
+  const { origin, protocol, hostname, port } = window.location;
   if (/^admin\./i.test(hostname)) {
-    return `${protocol}//${hostname.replace(/^admin\./i, '')}`;
+    const baseHost = hostname.replace(/^admin\./i, '');
+    return `${protocol}//${baseHost}${port ? ':' + port : ''}`;
   }
-  return `${protocol}//${hostname}`;
+  return origin || `${protocol}//${hostname}${port ? ':' + port : ''}`;
 })();
 
 function functionsUrl(endpoint) {
