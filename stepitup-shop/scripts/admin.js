@@ -3,6 +3,23 @@
  * Handles authentication, file uploads, product creation, and editing
  */
 
+// Resolve Netlify Functions base origin to work behind masked subdomains (e.g., admin.shop.stepituplearning.ca)
+const FUNCTIONS_ORIGIN = (() => {
+  try {
+    if (window.__FUNCTIONS_ORIGIN__) return String(window.__FUNCTIONS_ORIGIN__).replace(/\/$/, '');
+  } catch (_) {}
+  const { protocol, hostname } = window.location;
+  if (/^admin\./i.test(hostname)) {
+    return `${protocol}//${hostname.replace(/^admin\./i, '')}`;
+  }
+  return `${protocol}//${hostname}`;
+})();
+
+function functionsUrl(endpoint) {
+  const name = String(endpoint || '').replace(/^\/?\.netlify\/functions\/?/, '').replace(/^\//, '');
+  return `${FUNCTIONS_ORIGIN}/.netlify/functions/${name}`;
+}
+
 class AdminManager {
   constructor() {
     this.isAuthenticated = false;
@@ -171,11 +188,9 @@ class AdminManager {
         password: formData.get('password')
       };
 
-      const response = await fetch('/.netlify/functions/admin-auth', {
+      const response = await fetch(functionsUrl('admin-auth'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
       });
 
@@ -647,7 +662,7 @@ class AdminManager {
       // Test token validity by making a simple request first
       try {
         console.log('Testing authentication...');
-        const testResponse = await fetch('/.netlify/functions/manage-products', {
+        const testResponse = await fetch(functionsUrl('manage-products'), {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${authToken}`
@@ -667,9 +682,8 @@ class AdminManager {
       // Test if the target endpoint is reachable
       try {
         console.log('Testing endpoint connectivity...');
-        const endpointTest = await fetch(endpoint, {
-          method: 'OPTIONS'
-        });
+        const testUrl = this.currentEditingProduct ? functionsUrl('update-product') : functionsUrl('create-product');
+        const endpointTest = await fetch(testUrl, { method: 'OPTIONS' });
         console.log('Endpoint test status:', endpointTest.status);
       } catch (endpointError) {
         console.warn('Endpoint test failed:', endpointError.message);
@@ -677,8 +691,8 @@ class AdminManager {
 
       // Choose endpoint based on whether we're creating or updating
       const endpoint = this.currentEditingProduct ?
-        '/.netlify/functions/update-product' :
-        '/.netlify/functions/create-product';
+        functionsUrl('update-product') :
+        functionsUrl('create-product');
 
       console.log('Making request to:', endpoint);
 
@@ -1111,7 +1125,7 @@ class AdminManager {
       productsGrid.style.display = 'none';
       noProductsDiv.style.display = 'none';
 
-      const response = await fetch('/.netlify/functions/manage-products', {
+      const response = await fetch(functionsUrl('manage-products'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -1248,7 +1262,7 @@ class AdminManager {
       }
 
       // Fetch product data
-      const response = await fetch(`/.netlify/functions/get-product?product_id=${productId}`, {
+      const response = await fetch(`${functionsUrl('get-product')}?product_id=${productId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
         }
@@ -1418,7 +1432,7 @@ class AdminManager {
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
       
-      const response = await fetch(`/.netlify/functions/manage-products?product_id=${productId}`, {
+      const response = await fetch(`${functionsUrl('manage-products')}?product_id=${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
@@ -1785,13 +1799,14 @@ class AdminManager {
         try {
           const keepToken = localStorage.getItem('admin_session_token');
           const keepId = localStorage.getItem('admin_session_id');
-          await fetch('/.netlify/functions/admin-logs?type=sessions', {
+          const qs = new URLSearchParams({ type: 'sessions' });
+          if (keepToken) qs.set('keep_session_token', keepToken);
+          if (keepId) qs.set('keep_id', keepId);
+          await fetch(`${functionsUrl('admin-logs')}?${qs.toString()}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ keep_session_token: keepToken, keep_id: keepId })
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+            }
           });
           await this.loadAdminSessions();
         } catch (e) {
@@ -1821,7 +1836,7 @@ class AdminManager {
         activityReset.classList.add('loading');
         activityReset.disabled = true;
         try {
-          await fetch('/.netlify/functions/admin-logs?type=activity', {
+          await fetch(`${functionsUrl('admin-logs')}?type=activity`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
@@ -1862,7 +1877,7 @@ class AdminManager {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
     try {
-      const res = await fetch(`/.netlify/functions/admin-logs?type=sessions&_ts=${Date.now()}` , {
+      const res = await fetch(`${functionsUrl('admin-logs')}?type=sessions&_ts=${Date.now()}` , {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
         cache: 'no-store'
       });
@@ -1879,7 +1894,7 @@ class AdminManager {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
     try {
-      const res = await fetch(`/.netlify/functions/admin-logs?type=activity&_ts=${Date.now()}` , {
+      const res = await fetch(`${functionsUrl('admin-logs')}?type=activity&_ts=${Date.now()}` , {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
         cache: 'no-store'
       });
@@ -1921,7 +1936,7 @@ class AdminManager {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
     try {
-      const res = await fetch('/.netlify/functions/admin-reviews', {
+      const res = await fetch(functionsUrl('admin-reviews'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
       });
       const json = await res.json();
@@ -1966,7 +1981,7 @@ class AdminManager {
       return;
     }
     tbody.innerHTML = rows.map(r => `
-      <tr data-review-id="${r.id}">
+      <tr data-review-id="${r.id}" data-review-text="${this.escapeHtml(r.review || '')}">
         <td>${this.formatDateTime(r.created_at)}</td>
         <td>
           <div style="display:flex;align-items:center;gap:.5rem;">
@@ -1985,16 +2000,16 @@ class AdminManager {
           </div>
         </td>
         <td>
-          <div style="display:flex;gap:.5rem;align-items:center;">
-            <textarea class="review-text-input" rows="2" style="flex:1;width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;">${this.escapeHtml(r.review || '')}</textarea>
-            <button class="control-btn expand-review-btn" title="Expand">
-              <span class="btn-text"><i class="fas fa-up-right-and-down-left-from-center"></i></span>
-              <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
-            </button>
-          </div>
+          <button class="control-btn edit-text-btn">
+            <span class="btn-text"><i class="fas fa-pen"></i> Edit</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
         </td>
         <td>
-          <label class="checkbox-label"><input type="checkbox" class="featured-toggle" ${r.featured ? 'checked' : ''}><span class="checkbox-custom"></span> Featured</label>
+          <div class="review-flags">
+            <label class="checkbox-label"><input type="checkbox" class="featured-toggle" ${r.featured ? 'checked' : ''}><span class="checkbox-custom"></span> Featured</label>
+            <label class="checkbox-label"><input type="checkbox" class="verified-toggle" ${r.verified ? 'checked' : ''}><span class="checkbox-custom"></span> Verified</label>
+          </div>
         </td>
         <td>
           <button class="control-btn save-review-btn">
@@ -2027,7 +2042,7 @@ class AdminManager {
           const form = new FormData();
           form.append('id', id);
           form.append('image', file);
-          const res = await fetch('/.netlify/functions/admin-reviews', {
+          const res = await fetch(functionsUrl('admin-reviews'), {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
             body: form
@@ -2066,21 +2081,23 @@ class AdminManager {
         const tr = e.currentTarget.closest('tr');
         const id = tr.getAttribute('data-review-id');
         const name = tr.querySelector('.reviewer-name-input').value;
-        const review = tr.querySelector('.review-text-input').value;
+        const reviewInput = tr.querySelector('.review-text-input');
+        const review = reviewInput ? reviewInput.value : undefined;
         const featured = tr.querySelector('.featured-toggle').checked;
+        const verified = tr.querySelector('.verified-toggle').checked;
         const ratingWrapper = tr.querySelector('.inline-stars');
         const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : undefined;
         const saveBtn = tr.querySelector('.save-review-btn');
         saveBtn.classList.add('loading');
         saveBtn.disabled = true;
         try {
-          const res = await fetch('/.netlify/functions/admin-reviews', {
+          const res = await fetch(functionsUrl('admin-reviews'), {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ id, name, review, featured, rating })
+            body: JSON.stringify({ id, name, review, featured, rating, verified })
           });
           const json = await res.json();
           if (!res.ok) throw new Error(json.error || 'Failed to save review');
@@ -2093,15 +2110,15 @@ class AdminManager {
       });
     });
 
-    // Expand modal handlers
-    tbody.querySelectorAll('.expand-review-btn').forEach(btn => {
+    // Open editor from inline button
+    tbody.querySelectorAll('.edit-text-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tr = e.currentTarget.closest('tr');
         const id = tr.getAttribute('data-review-id');
         const name = tr.querySelector('.reviewer-name-input').value;
-        const review = tr.querySelector('.review-text-input').value;
         const ratingWrapper = tr.querySelector('.inline-stars');
         const rating = ratingWrapper ? parseInt(ratingWrapper.getAttribute('data-rating') || '0', 10) : 0;
+        const review = tr.getAttribute('data-review-text') || '';
         this.openReviewEditor({ id, name, review, rating });
       });
     });
@@ -2156,7 +2173,7 @@ class AdminManager {
           const name = nameInput.value;
           const reviewText = textInput.value;
           const rating = parseInt(starWrap.getAttribute('data-rating') || '0', 10);
-          const res = await fetch('/.netlify/functions/admin-reviews', {
+          const res = await fetch(functionsUrl('admin-reviews'), {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
@@ -2189,7 +2206,7 @@ class AdminManager {
   }
 
   async downloadLog(type, filename) {
-    const res = await fetch(`/.netlify/functions/admin-logs?type=${encodeURIComponent(type)}&mode=download`, {
+    const res = await fetch(`${functionsUrl('admin-logs')}?type=${encodeURIComponent(type)}&mode=download`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     });
     if (!res.ok) {

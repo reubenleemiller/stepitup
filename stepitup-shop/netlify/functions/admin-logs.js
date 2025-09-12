@@ -34,7 +34,7 @@ exports.handler = async (event) => {
       return { statusCode: 401, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid or expired token' }) };
     }
 
-    const url = new URL(event.rawUrl || `${process.env.URL || 'http://localhost'}${event.path.startsWith('/') ? '' : '/'}${event.path}`);
+    const url = new URL(event.rawUrl || `${process.env.URL || 'https://admin.shop.stepituplearning.ca'}${event.path.startsWith('/') ? '' : '/'}${event.path}`);
     const type = url.searchParams.get('type') || 'sessions';
     const mode = url.searchParams.get('mode') || 'list'; // list | download
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '500', 10), 2000);
@@ -49,9 +49,14 @@ exports.handler = async (event) => {
       try {
         if (event.body) {
           const body = JSON.parse(event.body);
-          keepToken = body.keep_session_token || null;
+          keepToken = body.keep_session_token || body.keep_token || null;
           keepId = body.keep_id || null;
         }
+      } catch {}
+      // Fallback to query params in case DELETE body is stripped by proxy
+      try {
+        keepToken = keepToken || url.searchParams.get('keep_session_token') || url.searchParams.get('keep_token');
+        keepId = keepId || url.searchParams.get('keep_id');
       } catch {}
 
       if (!keepToken && !keepId) {
