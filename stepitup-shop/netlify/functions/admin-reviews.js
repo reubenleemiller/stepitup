@@ -4,26 +4,6 @@ const { verifyAdminToken } = require('./admin-auth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-function extractClientIp(headers = {}) {
-  const h = Object.create(null);
-  for (const k in headers) h[k.toLowerCase()] = headers[k];
-  const candidates = [
-    h['x-nf-client-connection-ip'],
-    h['cf-connecting-ip'],
-    h['x-real-ip'],
-    h['client-ip'],
-    h['x-forwarded-for']
-  ].filter(Boolean);
-  let raw = candidates.find(Boolean) || '';
-  if (raw.includes(',')) raw = raw.split(',')[0].trim();
-  if (/^::ffff:/i.test(raw) && /\d+\.\d+\.\d+\.\d+/.test(raw)) {
-    raw = raw.match(/(\d+\.\d+\.\d+\.\d+)/)[1];
-  }
-  const ipv4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
-  const ipv6 = /^[a-f0-9:]+$/i;
-  return (ipv4.test(raw) || ipv6.test(raw)) ? raw : null;
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -61,7 +41,7 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'PUT') {
       const body = JSON.parse(event.body || '{}');
-      const { id, name, review, featured, rating, verified } = body;
+      const { id, name, review, featured, rating } = body;
       if (!id) return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'id is required' }) };
 
       const updates = {};
@@ -69,7 +49,6 @@ exports.handler = async (event) => {
       if (typeof review === 'string') updates.review = review;
       if (typeof featured === 'boolean') updates.featured = featured;
       if (typeof rating === 'number') updates.rating = Math.max(1, Math.min(5, Math.round(rating)));
-      if (typeof verified === 'boolean') updates.verified = verified;
 
       if (Object.keys(updates).length === 0) {
         return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'No valid fields to update' }) };
@@ -87,66 +66,21 @@ exports.handler = async (event) => {
         return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to update review' }) };
       }
 
-      // Log activity with inet-safe IP
+      // Log activity
       try {
-        const clientIP = extractClientIp(event.headers);
-        const userAgent = (event.headers && (event.headers['user-agent'] || event.headers['User-Agent'])) || null;
-        let logErr = null;
-        try {
-          await supabase.from('admin_activity_log').insert({
-            username: data?.username || 'admin',
-            action: 'update_review',
-            resource_type: 'review',
-            resource_id: id,
-            details: updates,
-            ip_address: clientIP,
-            user_agent: userAgent
-          });
-        } catch (e) { logErr = e; }
-        if (logErr && logErr.code === '22P02') {
-          await supabase.from('admin_activity_log').insert({
-            username: data?.username || 'admin',
-            action: 'update_review',
-            resource_type: 'review',
-            resource_id: id,
-            details: updates,
-            ip_address: null,
-            user_agent: userAgent
-          });
-        } else if (logErr) {
-          console.warn('Failed to log update_review:', logErr);
-        }
-
-        // Log review_verified when marked verified
-        if (typeof verified === 'boolean' && verified === true) {
-          let logVerifiedErr = null;
-          try {
-            await supabase.from('admin_activity_log').insert({
-              username: data?.username || 'admin',
-              action: 'review_verified',
-              resource_type: 'review',
-              resource_id: id,
-              details: { verified: true },
-              ip_address: clientIP,
-              user_agent: userAgent
-            });
-          } catch (e) { logVerifiedErr = e; }
-          if (logVerifiedErr && logVerifiedErr.code === '22P02') {
-            await supabase.from('admin_activity_log').insert({
-              username: data?.username || 'admin',
-              action: 'review_verified',
-              resource_type: 'review',
-              resource_id: id,
-              details: { verified: true },
-              ip_address: null,
-              user_agent: userAgent
-            });
-          } else if (logVerifiedErr) {
-            console.warn('Failed to log review_verified:', logVerifiedErr);
-          }
-        }
-      } catch (logErrOuter) {
-        console.warn('Failed to log update_review/review_verified (outer):', logErrOuter);
+        const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+        const userAgent = event.headers['user-agent'] || null;
+        await supabase.from('admin_activity_log').insert({
+          username: data?.username || 'admin',
+          action: 'update_review',
+          resource_type: 'review',
+          resource_id: id,
+          details: updates,
+          ip_address: clientIP,
+          user_agent: userAgent
+        });
+      } catch (logErr) {
+        console.warn('Failed to log update_review:', logErr);
       }
 
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, review: updated }) };
@@ -199,37 +133,21 @@ exports.handler = async (event) => {
         return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to update review image' }) };
       }
 
-      // Log activity with inet-safe IP
+      // Log activity
       try {
-        const clientIP = extractClientIp(event.headers);
-        const userAgent = (event.headers && (event.headers['user-agent'] || event.headers['User-Agent'])) || null;
-        let logErr = null;
-        try {
-          await supabase.from('admin_activity_log').insert({
-            username: data?.username || 'admin',
-            action: 'update_review_image',
-            resource_type: 'review',
-            resource_id: reviewId,
-            details: { image_url: urlData.publicUrl },
-            ip_address: clientIP,
-            user_agent: userAgent
-          });
-        } catch (e) { logErr = e; }
-        if (logErr && logErr.code === '22P02') {
-          await supabase.from('admin_activity_log').insert({
-            username: data?.username || 'admin',
-            action: 'update_review_image',
-            resource_type: 'review',
-            resource_id: reviewId,
-            details: { image_url: urlData.publicUrl },
-            ip_address: null,
-            user_agent: userAgent
-          });
-        } else if (logErr) {
-          console.warn('Failed to log update_review_image:', logErr);
-        }
-      } catch (logErrOuter) {
-        console.warn('Failed to log update_review_image (outer):', logErrOuter);
+        const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+        const userAgent = event.headers['user-agent'] || null;
+        await supabase.from('admin_activity_log').insert({
+          username: data?.username || 'admin',
+          action: 'update_review_image',
+          resource_type: 'review',
+          resource_id: reviewId,
+          details: { image_url: urlData.publicUrl },
+          ip_address: clientIP,
+          user_agent: userAgent
+        });
+      } catch (logErr) {
+        console.warn('Failed to log update_review_image:', logErr);
       }
 
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, image_url: urlData.publicUrl }) };

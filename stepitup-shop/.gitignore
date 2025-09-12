@@ -1,5 +1,5 @@
-.DS_Store
 # Local Netlify folder
-.env
 .netlify
-/node_modules
+.env
+.DS_Store
+node_modules
