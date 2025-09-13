@@ -316,6 +316,72 @@
                     </div>
                 </div>
 
+                <!-- Resources Upload Section -->
+                <div class="manage-section" id="resources-upload-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-folder-open"></i> Upload Resources</h2>
+                        <p>Upload files to the Supabase "resources" bucket into Grade folders</p>
+                    </div>
+                    <div class="manage-content">
+                        <div class="resources-uploader-controls">
+                            <div class="resources-field">
+                                <label for="grade-folder-select">Select grade folder</label>
+                                <select id="grade-folder-select" class="grade-select">
+                                    <option value="Grade 1">Grade 1</option>
+                                    <option value="Grade 2">Grade 2</option>
+                                    <option value="Grade 3">Grade 3</option>
+                                    <option value="Grade 4">Grade 4</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                </select>
+                            </div>
+                            <div class="resources-field">
+                                <label for="resources-file-input">Choose files</label>
+                                <input id="resources-file-input" class="resources-file-input" type="file" multiple />
+                            </div>
+                            <div class="resources-actions">
+                                <button type="button" id="start-upload-btn" class="control-btn"><i class="fas fa-upload"></i> Start Upload</button>
+                                <button type="button" id="clear-queue-btn" class="control-btn"><i class="fas fa-trash"></i> Clear Queue</button>
+                            </div>
+                        </div>
+                        <div class="upload-queue" id="upload-queue" aria-live="polite"></div>
+                        <div class="upload-summary" id="upload-summary">0/0 completed • 0 failed</div>
+                        <p class="upload-help">Tip: You can drag and drop files anywhere in this section. Each file uploads independently with its own progress bar.</p>
+                    </div>
+                </div>
+
+                <!-- Manage Free Resources Section -->
+                <div class="manage-section" id="free-resources-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-boxes-stacked"></i> Manage Free Resources</h2>
+                        <p>View and delete files in the Supabase "resources" bucket</p>
+                    </div>
+                    <div class="manage-content">
+                        <div class="manage-controls">
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <label for="free-grade-filter" style="font-weight:600; color:#2d3748;">Grade</label>
+                                <select id="free-grade-filter" class="grade-select">
+                                    <option value="All">All Grades</option>
+                                    <option value="Grade 1">Grade 1</option>
+                                    <option value="Grade 2">Grade 2</option>
+                                    <option value="Grade 3">Grade 3</option>
+                                    <option value="Grade 4">Grade 4</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <label style="display:flex; align-items:center; gap:0.4rem; color:#2d3748;">
+                                    <input id="free-select-all" type="checkbox" style="accent-color:#2c77cc;"> Select All
+                                </label>
+                                <button id="free-refresh-btn" class="control-btn"><i class="fas fa-rotate"></i> Refresh</button>
+                                <button id="free-bulk-delete-btn" class="control-btn" disabled><i class="fas fa-trash"></i> Delete Selected</button>
+                            </div>
+                        </div>
+                        <div id="free-resources-list" class="free-resources-list"></div>
+                    </div>
+                </div>
+
                 <!-- Admin Logs Section -->
                 <div class="manage-section" id="admin-logs-section">
                     <div class="section-header">
@@ -537,6 +603,8 @@
     </div>
 
     <script src="../scripts/admin.js"></script>
+    <script src="../scripts/resources-uploader.js"></script>
+    <script src="../scripts/resources-manager.js"></script>
 
     <script>
     // Enhanced form handling for edit mode
@@ -583,5 +651,22 @@
         });
     });
     </script>
+    <!-- Free Resources Delete Modal -->
+    <div id="free-delete-modal" class="delete-modal">
+      <div class="delete-modal-content">
+        <div class="delete-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <h3>Delete Resources</h3>
+        <p id="free-delete-desc">Are you sure you want to delete the selected resource(s)?</p>
+        <div class="free-delete-list" id="free-delete-list" style="max-height:180px; overflow:auto; text-align:left; margin:0.5rem 0 1rem; color:#4a5568;"></div>
+        <div class="delete-modal-actions">
+          <button class="delete-cancel-btn" id="free-delete-cancel"><i class="fas fa-times"></i> Cancel</button>
+          <button class="delete-confirm-btn" id="free-delete-confirm">
+            <span class="btn-text"><i class="fas fa-trash"></i> Delete</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>

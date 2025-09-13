@@ -1426,6 +1426,15 @@ body {
   background: #e2e8f0;
 }
 
+.free-resources-list{ display:flex; flex-direction:column; gap:0.75rem; }
+.free-file-row{ display:flex; align-items:center; justify-content:space-between; padding:0.75rem; border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; }
+.free-file-left{ display:flex; align-items:center; gap:0.6rem; }
+.free-file-left i{ color:#2c77cc; }
+.free-file-meta{ display:flex; flex-direction:column; }
+.free-file-name{ font-weight:600; color:#2d3748; }
+.free-file-sub{ color:#718096; font-size:0.85rem; }
+@media (max-width:768px){ .free-file-row{ flex-direction:column; align-items:flex-start; gap:0.5rem; } }
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header-content {
@@ -1509,6 +1518,35 @@ body {
     padding: 1.5rem 1rem;
   }
 }
+
+.resources-uploader-controls { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1.5rem; }
+.resources-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.resources-field label { color: #2d3748; font-weight: 600; font-size: 0.9rem; }
+.grade-select, .resources-file-input { padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #fafafa; transition: all 0.2s ease; }
+.grade-select:focus, .resources-file-input:focus { outline: none; border-color: #2c77cc; box-shadow: 0 0 0 3px rgba(44,119,204,0.1); background: #fff; }
+.resources-actions { display: flex; gap: 0.5rem; }
+.upload-queue { display: flex; flex-direction: column; gap: 0.75rem; }
+.upload-queue-item { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; padding: 0.75rem 0.75rem 0.5rem; }
+.upload-queue-item .item-left { display: flex; align-items: center; gap: 0.75rem; }
+.file-icon { width: 36px; height: 36px; border-radius: 8px; background: #e6f0fb; color: #2c77cc; display: flex; align-items: center; justify-content: center; }
+.file-meta { flex: 1; min-width: 0; }
+.file-name { font-weight: 600; color: #2d3748; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-sub { color: #718096; font-size: 0.85rem; }
+.item-right { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
+.file-status { font-size: 0.85rem; font-weight: 600; }
+.file-status.status-queued { color: #718096; }
+.file-status.status-uploading { color: #2c77cc; }
+.file-status.status-done { color: #38a169; }
+.file-status.status-error { color: #e53e3e; }
+.upload-queue-item .item-right { float: right; margin-top: -40px; }
+.remove-item-btn { background: #fee2e2; border: 1px solid #fecaca; color: #dc2626; border-radius: 6px; padding: 0.25rem 0.5rem; cursor: pointer; }
+.remove-item-btn:hover { background: #dc2626; color: #fff; }
+.progress-track { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 0.6rem; }
+.progress-value { height: 100%; background: linear-gradient(90deg, #2c77cc, #48bb78); width: 0%; transition: width 0.2s ease; }
+.upload-summary { margin-top: 1rem; color: #718096; font-size: 0.9rem; }
+.upload-help { margin-top: 0.5rem; color: #718096; font-size: 0.85rem; }
+#resources-upload-section.dragging { outline: 2px dashed #2c77cc; outline-offset: 6px; border-radius: 12px; }
+@media (max-width: 768px) { .resources-uploader-controls { grid-template-columns: 1fr; align-items: stretch; } .upload-queue-item .item-right { float: none; margin-top: 0; justify-content: flex-start; } }
 
 /* Additional Featured Product Ribbon Styles for Store */
 .featured-ribbon {
