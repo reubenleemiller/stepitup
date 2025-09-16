@@ -373,6 +373,32 @@ body {
   padding: 2.5rem;
 }
 
+/* Rich text editor to replace textarea */
+.rich-text-editor {
+  padding: 0.875rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: #fafafa;
+  min-height: 180px;
+  line-height: 1.6;
+  outline: none;
+}
+.rich-text-editor[contenteditable="true"]:empty:before {
+  content: attr(placeholder);
+  color: #718096;
+  pointer-events: none;
+}
+.rich-text-editor:focus {
+  border-color: #2c77cc;
+  box-shadow: 0 0 0 3px rgba(44, 119, 204, 0.1);
+  background: white;
+}
+.rich-text-editor a { color: #2c77cc; text-decoration: underline; }
+.rich-text-editor ul { padding-left: 1.25rem; margin: 0.5rem 0; }
+.rich-text-editor li { margin: 0.25rem 0; }
+
 .form-section {
   margin-bottom: 3rem;
 }
@@ -700,6 +726,15 @@ body {
   border-radius: 8px;
   color: #2d3748;
 }
+
+/* File info row and list styling for resource images */
+.file-info-row { display:flex; align-items:flex-start; gap:0.75rem; }
+.file-info-icon { color:#2c77cc; font-size:1.2rem; margin-top:2px; }
+.file-info-list-wrap { flex:1; text-align:left; }
+.file-list { color:#718096; font-size:0.875rem; padding-left:1rem; max-height:100px; overflow:auto; margin:0; list-style: disc; }
+.file-list li { margin:0.15rem 0; word-break: break-word; overflow-wrap: anywhere; }
+.file-remove-btn { background:#e53e3e; color:#fff; border:none; border-radius:4px; padding:0.5rem; cursor:pointer; transition:all 0.2s ease; }
+.file-remove-btn:hover { background:#c53030; }
 
 .file-info.show {
   display: block;
@@ -1043,6 +1078,25 @@ body {
 /* Button Spinner */
 .btn-spinner {
   display: none !important;
+}
+
+/* Show/hide spinners inside primary actions when loading */
+.submit-btn.loading .btn-spinner,
+.login-btn.loading .btn-spinner,
+.control-btn.loading .btn-spinner {
+  display: inline-flex !important;
+}
+.submit-btn.loading .btn-text,
+.login-btn.loading .btn-text,
+.control-btn.loading .btn-text {
+  display: none !important;
+}
+
+/* Make embedded spinner small and unobtrusive */
+.submit-btn .btn-spinner i,
+.login-btn .btn-spinner i,
+.control-btn .btn-spinner i {
+  font-size: 1rem;
 }
 
 .btn-text,

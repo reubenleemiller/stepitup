@@ -160,19 +160,13 @@
                                         <button type="button" class="toolbar-btn" data-action="clear" title="Clear Formatting">
                                             <i class="fas fa-remove-format"></i>
                                         </button>
-                                        <button type="button" class="toolbar-btn preview-toggle" data-action="preview" title="Toggle Preview">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
                                     </div>
                                 </div>
-                                <textarea id="product-description" name="description" rows="6"
-                                          placeholder="Enter product description with formatting support..."></textarea>
-                                <div id="description-preview" class="description-preview" style="display: none;">
-                                    <div class="preview-content"></div>
-                                </div>
+                                <div id="product-description-editor" class="rich-text-editor" contenteditable="true" aria-label="Product description" placeholder="Enter product description..."></div>
+                                <input type="hidden" id="product-description" name="description" />
                                 <div class="formatting-help">
                                     <i class="fas fa-info-circle"></i>
-                                    <span>Use the toolbar above to format your text or type markdown-style formatting (e.g., **bold**, *italic*, # heading)</span>
+                                    <span>Use the toolbar to format your text. Changes apply immediately.</span>
                                 </div>
                             </div>
                         </div>
@@ -271,8 +265,8 @@
                                     <span class="btn-text">
                                         <i class="fas fa-plus"></i> Create Product
                                     </span>
-                                    <span class="btn-spinner enhanced-spinner" style="display: none;">
-                                        <i class="fas fa-spinner fa-spin"></i> Processing...
+                                    <span class="btn-spinner" aria-hidden="true" style="display: none;">
+                                        <i class="fas fa-spinner fa-spin"></i>
                                     </span>
                                 </button>
                                 <p class="submit-note">

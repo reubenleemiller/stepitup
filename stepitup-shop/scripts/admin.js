@@ -166,7 +166,7 @@ class AdminManager {
    */
   async handleLogin(e) {
     e.preventDefault();
-    
+
     const loginBtn = document.querySelector('.login-btn');
     const btnText = loginBtn.querySelector('.btn-text');
     const btnSpinner = loginBtn.querySelector('.btn-spinner');
@@ -174,6 +174,7 @@ class AdminManager {
 
     try {
       // Show loading state
+      loginBtn.classList.add('loading');
       loginBtn.disabled = true;
       btnText.style.display = 'none';
       btnSpinner.style.display = 'flex';
@@ -224,6 +225,7 @@ class AdminManager {
       this.showLoginError(error.message);
     } finally {
       // Reset button state
+      loginBtn.classList.remove('loading');
       loginBtn.disabled = false;
       btnText.style.display = 'flex';
       btnSpinner.style.display = 'none';
@@ -370,7 +372,8 @@ class AdminManager {
       if (!this.uploadedFiles[uploadType]) {
         this.uploadedFiles[uploadType] = [];
       }
-      this.uploadedFiles[uploadType].push(file);
+      const exists = this.uploadedFiles[uploadType].some(f => f && f.name === file.name && f.size === file.size && f.lastModified === file.lastModified);
+      if (!exists) this.uploadedFiles[uploadType].push(file);
     } else {
       this.uploadedFiles[uploadType] = file;
     }
@@ -433,23 +436,15 @@ class AdminManager {
 
     // For resource images, show multiple files
     if (uploadType === 'resource-images') {
-      const fileCount = this.uploadedFiles[uploadType].length;
+      const files = Array.isArray(this.uploadedFiles[uploadType]) ? this.uploadedFiles[uploadType] : [];
+      const names = files.map(f => `<li>${this.escapeHtml(f.name)}</li>`).join('');
       fileInfo.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <i class="fas fa-images" style="color: #2c77cc; font-size: 1.2rem;"></i>
-          <div style="flex: 1;">
-            <div style="font-weight: 600; color: #2d3748; margin-bottom: 0.25rem;">
-              ${fileCount} image${fileCount === 1 ? '' : 's'} selected
-            </div>
-            <div style="color: #718096; font-size: 0.875rem;">
-              Ready to upload
-            </div>
+        <div class="file-info-row">
+          <i class="fas fa-images file-info-icon"></i>
+          <div class="file-info-list-wrap">
+            <ul class="file-list">${names}</ul>
           </div>
-          <button type="button" onclick="adminManager.removeFile('${uploadType}', event)"
-                  style="background: #e53e3e; color: white; border: none; border-radius: 4px;
-                         padding: 0.5rem; cursor: pointer; transition: all 0.2s ease;">
-            <i class="fas fa-times"></i>
-          </button>
+          <button type="button" class="file-remove-btn" onclick="adminManager.removeFile('${uploadType}', event)"><i class="fas fa-times"></i></button>
         </div>
       `;
       // Allow adding more images; keep input enabled
@@ -622,9 +617,15 @@ class AdminManager {
       this.isSubmitting = true;
 
       // Show loading state with enhanced visibility
+      submitBtn.classList.add('loading');
       submitBtn.disabled = true;
       btnText.style.display = 'none';
       btnSpinner.style.display = 'flex';
+
+      // Sync WYSIWYG content into hidden field
+      const editor = document.getElementById('product-description-editor');
+      const hiddenDesc = document.getElementById('product-description');
+      if (editor && hiddenDesc) hiddenDesc.value = editor.innerHTML.trim();
 
       // Prepare product data (will be used for each retry)
       const productData = {
@@ -824,6 +825,7 @@ class AdminManager {
       this.isSubmitting = false;
 
       // Reset button state
+      submitBtn.classList.remove('loading');
       submitBtn.disabled = false;
       btnText.style.display = 'flex';
       btnSpinner.style.display = 'none';
@@ -950,6 +952,12 @@ class AdminManager {
   resetForm() {
     const form = document.getElementById('product-form');
     form.reset();
+
+    // Clear description editor
+    const editor = document.getElementById('product-description-editor');
+    if (editor) editor.innerHTML = '';
+    const hiddenDesc = document.getElementById('product-description');
+    if (hiddenDesc) hiddenDesc.value = '';
 
     // Clear uploaded files
     this.removeFile('product');
@@ -1210,6 +1218,8 @@ class AdminManager {
       document.getElementById('product-category').value = product.category || '';
       document.getElementById('product-price').value = (product.price / 100).toFixed(2);
       document.getElementById('product-description').value = product.description || '';
+      const editor = document.getElementById('product-description-editor');
+      if (editor) editor.innerHTML = product.description || '';
       document.getElementById('product-featured').checked = Boolean(product.featured);
 
       // Update form UI
@@ -1479,209 +1489,149 @@ class AdminManager {
    */
   setupFormattingToolbar() {
     const toolbar = document.getElementById('formatting-toolbar');
-    const textarea = document.getElementById('product-description');
+    const editor = document.getElementById('product-description-editor');
 
-    if (!toolbar || !textarea) return;
+    if (!toolbar || !editor) return;
 
-    // Add click event listeners to toolbar buttons
+    // Ensure editor is focusable
+    editor.setAttribute('role', 'textbox');
+    editor.setAttribute('aria-multiline', 'true');
+
+    // Apply actions
     toolbar.addEventListener('click', (e) => {
       const button = e.target.closest('.toolbar-btn');
       if (!button) return;
-
       e.preventDefault();
       const action = button.dataset.action;
-      this.handleFormatAction(action, textarea, button);
+      this.handleFormatAction(action, editor, button);
     });
 
-    // Add keyboard shortcuts
-    textarea.addEventListener('keydown', (e) => {
+    // Keyboard shortcuts
+    editor.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
           case 'b':
             e.preventDefault();
-            this.handleFormatAction('bold', textarea);
+            this.handleFormatAction('bold', editor);
             break;
           case 'i':
             e.preventDefault();
-            this.handleFormatAction('italic', textarea);
+            this.handleFormatAction('italic', editor);
             break;
           case 'u':
             e.preventDefault();
-            this.handleFormatAction('underline', textarea);
+            this.handleFormatAction('underline', editor);
             break;
         }
       }
     });
 
-    // Update preview in real-time
-    textarea.addEventListener('input', () => {
-      const preview = document.getElementById('description-preview');
-      const previewContent = preview?.querySelector('.preview-content');
-      if (preview && previewContent && preview.style.display !== 'none') {
-        const renderedContent = this.renderMarkdown(textarea.value || 'Enter your description...');
-        previewContent.innerHTML = renderedContent;
+    // Keep toolbar state in sync
+    document.addEventListener('selectionchange', () => {
+      if (document.activeElement === editor || editor.contains(window.getSelection()?.anchorNode)) {
+        this.updateToolbarState(editor);
       }
     });
 
-    // Update toolbar state on selection change
-    textarea.addEventListener('selectionchange', () => {
-      this.updateToolbarState(textarea);
-    });
-
-    textarea.addEventListener('keyup', () => {
-      this.updateToolbarState(textarea);
-    });
-
-    textarea.addEventListener('mouseup', () => {
-      this.updateToolbarState(textarea);
-    });
+    editor.addEventListener('keyup', () => this.updateToolbarState(editor));
+    editor.addEventListener('mouseup', () => this.updateToolbarState(editor));
   }
 
   /**
    * Handle formatting actions
    */
-  handleFormatAction(action, textarea, button = null) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-    const beforeText = textarea.value.substring(0, start);
-    const afterText = textarea.value.substring(end);
+  handleFormatAction(action, editor, button = null) {
+    editor.focus();
+    const sel = window.getSelection();
 
-    let newText = '';
-    let cursorPos = start;
+    const exec = (cmd, val = null) => document.execCommand(cmd, false, val);
 
     switch (action) {
       case 'bold':
-        if (selectedText) {
-          newText = `**${selectedText}**`;
-          cursorPos = start + newText.length;
-        } else {
-          newText = '**bold text**';
-          cursorPos = start + 2;
-        }
+        exec('bold');
         break;
-
       case 'italic':
-        if (selectedText) {
-          newText = `*${selectedText}*`;
-          cursorPos = start + newText.length;
-        } else {
-          newText = '*italic text*';
-          cursorPos = start + 1;
-        }
+        exec('italic');
         break;
-
       case 'underline':
-        if (selectedText) {
-          newText = `<u>${selectedText}</u>`;
-          cursorPos = start + newText.length;
-        } else {
-          newText = '<u>underlined text</u>';
-          cursorPos = start + 3;
-        }
+        exec('underline');
         break;
-
-      case 'heading':
-        const lineStart = beforeText.lastIndexOf('\n') + 1;
-        const lineEnd = afterText.indexOf('\n');
-        const fullLineEnd = lineEnd === -1 ? textarea.value.length : end + lineEnd;
-        const lineText = textarea.value.substring(lineStart, fullLineEnd);
-
-        if (lineText.startsWith('## ')) {
-          // Convert to H3
-          newText = lineText.replace('## ', '### ');
-        } else if (lineText.startsWith('# ')) {
-          // Convert to H2
-          newText = lineText.replace('# ', '## ');
-        } else {
-          // Convert to H1
-          newText = '# ' + lineText;
-        }
-
-        textarea.value = beforeText.substring(0, lineStart) + newText + afterText.substring(lineEnd === -1 ? 0 : lineEnd);
-        cursorPos = lineStart + newText.length;
+      case 'heading': {
+        let isHeading = false;
+        try {
+          const node = (sel && sel.rangeCount) ? sel.getRangeAt(0).commonAncestorContainer : null;
+          const el = node && node.nodeType === 1 ? node : node ? node.parentElement : null;
+          isHeading = !!(el && el.closest && el.closest('h1,h2,h3,h4,h5,h6'));
+        } catch(_) {}
+        exec('formatBlock', isHeading ? 'P' : 'H1');
         break;
-
+      }
       case 'list':
-        const lines = selectedText ? selectedText.split('\n') : ['List item'];
-        newText = lines.map(line => `• ${line.trim()}`).join('\n');
-        cursorPos = start + newText.length;
+        exec('insertUnorderedList');
         break;
-
-      case 'link':
-        const linkText = selectedText || 'link text';
-        newText = `[${linkText}](https://example.com)`;
-        cursorPos = selectedText ? start + newText.length : start + linkText.length + 3;
+      case 'link': {
+        const url = prompt('Enter URL');
+        if (url) exec('createLink', url);
         break;
-
+      }
       case 'clear':
-        if (selectedText) {
-          // Remove common markdown formatting
-          newText = selectedText
-            .replace(/\*\*(.*?)\*\*/g, '$1')  // Bold
-            .replace(/\*(.*?)\*/g, '$1')      // Italic
-            .replace(/<u>(.*?)<\/u>/g, '$1')  // Underline
-            .replace(/^#{1,6}\s+/gm, '')      // Headers
-            .replace(/^[•\-\*]\s+/gm, '')     // Lists
-            .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Links
-          cursorPos = start + newText.length;
-        }
+        exec('removeFormat');
+        // unwrap headings/lists if needed
+        try {
+          const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+          if (range) {
+            const container = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+            if (container && container.closest('h1,h2,h3,h4,h5,h6')) {
+              const h = container.closest('h1,h2,h3,h4,h5,h6');
+              const span = document.createElement('span');
+              span.innerHTML = h.innerHTML;
+              h.replaceWith(span);
+            }
+          }
+        } catch(_) {}
         break;
-
-      case 'preview':
-        this.togglePreview(textarea, button);
-        return;
-
       default:
         return;
     }
 
-    if (action !== 'heading') {
-      textarea.value = beforeText + newText + afterText;
-    }
-
-    // Set cursor position
-    textarea.focus();
-    textarea.setSelectionRange(cursorPos, cursorPos);
-
-    // Update button state
-    if (button) {
-      button.classList.toggle('active', true);
-      setTimeout(() => button.classList.remove('active'), 200);
-    }
-
-    // Trigger input event for any listeners
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    this.updateToolbarState(editor);
   }
 
   /**
    * Update toolbar button states based on current selection
    */
-  updateToolbarState(textarea) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = textarea.value.substring(start, end);
-
-    // This is a simplified state update - in a full implementation,
-    // you would parse the text around the cursor to determine active states
+  updateToolbarState(editor) {
     const toolbarButtons = document.querySelectorAll('.toolbar-btn');
+    const sel = window.getSelection();
+    let selEl = null;
+    try {
+      const node = (sel && sel.rangeCount) ? sel.getRangeAt(0).commonAncestorContainer : null;
+      selEl = node && node.nodeType === 1 ? node : node ? node.parentElement : null;
+    } catch(_) {}
+
     toolbarButtons.forEach(btn => {
       const action = btn.dataset.action;
       let isActive = false;
-
-      switch (action) {
-        case 'bold':
-          isActive = selectedText.includes('**') || this.isInsideMarkdown(textarea, start, '**');
-          break;
-        case 'italic':
-          isActive = selectedText.includes('*') || this.isInsideMarkdown(textarea, start, '*');
-          break;
-        case 'underline':
-          isActive = selectedText.includes('<u>') || this.isInsideMarkdown(textarea, start, '<u>', '</u>');
-          break;
-      }
-
-      btn.classList.toggle('active', isActive);
+      try {
+        switch (action) {
+          case 'bold':
+            isActive = document.queryCommandState('bold');
+            break;
+          case 'italic':
+            isActive = document.queryCommandState('italic');
+            break;
+          case 'underline':
+            isActive = document.queryCommandState('underline');
+            break;
+          case 'list':
+            isActive = document.queryCommandState('insertUnorderedList') || !!(selEl && selEl.closest && selEl.closest('ul li'));
+            break;
+          case 'heading':
+            isActive = !!(selEl && selEl.closest && selEl.closest('h1,h2,h3,h4,h5,h6'));
+            break;
+        }
+      } catch(_) {}
+      btn.classList.toggle('active', !!isActive);
     });
   }
 
