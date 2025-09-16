@@ -1,6 +1,12 @@
 (function(){
   function $(s,r){return (r||document).querySelector(s);} function $all(s,r){return Array.from((r||document).querySelectorAll(s));}
-  function functionsUrl(endpoint){ try{ if(window.__FUNCTIONS_ORIGIN__){ const o=String(window.__FUNCTIONS_ORIGIN__).replace(/\/$/,''); return `${o}/.netlify/functions/${String(endpoint).replace(/^\/+/, '')}`;} }catch(_){} const {origin,protocol,hostname,port}=window.location; const base = /^admin\./i.test(hostname)? `${protocol}//${hostname.replace(/^admin\./i,'')}${port?':'+port:''}` : (origin||`${protocol}//${hostname}${port?':'+port:''}`); return `${base}/.netlify/functions/${String(endpoint).replace(/^\/+/, '')}`; }
+  function functionsUrl(endpoint){
+  try{ if(window.__FUNCTIONS_ORIGIN__){ const o=String(window.__FUNCTIONS_ORIGIN__).replace(/\/$/,''); return `${o}/.netlify/functions/${String(endpoint).replace(/^\/+/, '')}`; }
+  }catch(_){}
+  const {origin,protocol,hostname,port}=window.location;
+  const base = origin || `${protocol}//${hostname}${port?':'+port:''}`;
+  return `${base}/.netlify/functions/${String(endpoint).replace(/^\/+/, '')}`;
+}
 
   class ResourcesManager{
     constructor(){ document.addEventListener('DOMContentLoaded', ()=> this.mount()); }

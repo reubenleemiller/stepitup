@@ -3,16 +3,12 @@
  * Handles authentication, file uploads, product creation, and editing
  */
 
-// Resolve Netlify Functions base origin to work behind masked subdomains (e.g., admin.shop.stepituplearning.ca)
+// Resolve Netlify Functions base origin. Prefer same-origin to avoid CORS; allow override via window.__FUNCTIONS_ORIGIN__
 const FUNCTIONS_ORIGIN = (() => {
   try {
     if (window.__FUNCTIONS_ORIGIN__) return String(window.__FUNCTIONS_ORIGIN__).replace(/\/$/, '');
   } catch (_) {}
   const { origin, protocol, hostname, port } = window.location;
-  if (/^admin\./i.test(hostname)) {
-    const baseHost = hostname.replace(/^admin\./i, '');
-    return `${protocol}//${baseHost}${port ? ':' + port : ''}`;
-  }
   return origin || `${protocol}//${hostname}${port ? ':' + port : ''}`;
 })();
 
