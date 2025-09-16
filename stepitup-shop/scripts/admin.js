@@ -704,6 +704,7 @@ class AdminManager {
       );
 
       const preparePayload = {
+        productId: this.currentEditingProduct ? productData.id : undefined,
         productData,
         files: {
           product: this.uploadedFiles.product ? { filename: this.uploadedFiles.product.name, contentType: this.uploadedFiles.product.type } : null,
@@ -765,7 +766,8 @@ class AdminManager {
         },
         fileMeta
       };
-      const finRes = await fetch(functionsUrl('finalize-product'), {
+      const finEndpoint = this.currentEditingProduct ? 'finalize-product-update' : 'finalize-product';
+      const finRes = await fetch(functionsUrl(finEndpoint), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(finalizePayload)

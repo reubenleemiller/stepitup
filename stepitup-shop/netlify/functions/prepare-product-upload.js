@@ -47,7 +47,9 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Name, category, and price are required' }) };
     }
 
-    if (!files.product || !files.product.filename || !files.product.contentType) {
+    // For create: files.product required; for update: productId provided, product file may be omitted
+    const isUpdate = !!body.productId;
+    if (!isUpdate && (!files.product || !files.product.filename || !files.product.contentType)) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Product file metadata required' }) };
     }
 
@@ -55,7 +57,7 @@ exports.handler = async (event) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     // Build storage paths
-    const productPath = `products/${productId}/${timestamp}-${sanitizeFileName(files.product.filename)}`;
+    const productPath = files.product ? `products/${productId}/${timestamp}-${sanitizeFileName(files.product.filename)}` : null;
     const previewPath = files.preview ? `previews/${productId}/${timestamp}-${sanitizeFileName(files.preview.filename)}` : null;
     const images = Array.isArray(files.resourceImages) ? files.resourceImages : [];
     const imagePaths = images.map((img) => `resource-images/${productId}/${timestamp}-${sanitizeFileName(img.filename)}`);
@@ -63,14 +65,16 @@ exports.handler = async (event) => {
     // Create signed upload URLs
     const responses = {};
 
-    const { data: prodSigned, error: prodErr } = await supabase
-      .storage
-      .from('paid-resources')
-      .createSignedUploadUrl(productPath);
-    if (prodErr) {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to prepare product upload', details: prodErr.message }) };
+    if (productPath) {
+      const { data: prodSigned, error: prodErr } = await supabase
+        .storage
+        .from('paid-resources')
+        .createSignedUploadUrl(productPath);
+      if (prodErr) {
+        return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed to prepare product upload', details: prodErr.message }) };
+      }
+      responses.product = { path: productPath, signedUrl: prodSigned?.signedUrl, token: prodSigned?.token };
     }
-    responses.product = { path: productPath, signedUrl: prodSigned?.signedUrl, token: prodSigned?.token };
 
     if (previewPath) {
       const { data: prevSigned, error: prevErr } = await supabase
