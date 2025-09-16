@@ -696,167 +696,84 @@ class AdminManager {
       // Small delay to prevent potential timing issues
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Retry mechanism for response body issues
-      let maxRetries = 2;
-      let lastError = null;
-      let response = null;
-      let result = null;
+      // New path: use signed uploads to Supabase to avoid large multipart through Netlify
+      const totalBytes = (
+        (this.uploadedFiles.product?.size || 0) +
+        (this.uploadedFiles.preview?.size || 0) +
+        (Array.isArray(this.uploadedFiles['resource-images']) ? this.uploadedFiles['resource-images'].reduce((s,f)=>s+(f?.size||0),0) : 0)
+      );
 
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          console.log(`Attempt ${attempt + 1} of ${maxRetries}`);
+      const preparePayload = {
+        productData,
+        files: {
+          product: this.uploadedFiles.product ? { filename: this.uploadedFiles.product.name, contentType: this.uploadedFiles.product.type } : null,
+          preview: this.uploadedFiles.preview ? { filename: this.uploadedFiles.preview.name, contentType: this.uploadedFiles.preview.type } : null,
+          resourceImages: Array.isArray(this.uploadedFiles['resource-images']) ? this.uploadedFiles['resource-images'].map(f=> ({ filename: f.name, contentType: f.type })) : []
+        }
+      };
 
-          // Create fresh FormData for each attempt
-          const formData = new FormData();
-          formData.append('productData', JSON.stringify(productData));
+      // Step 1: prepare signed URLs
+      const prepRes = await fetch(functionsUrl('prepare-product-upload'), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(preparePayload)
+      });
+      const prepJson = await this.processResponse(prepRes);
+      if (prepJson.error) throw new Error(prepJson.error);
 
-          // For new products, productFile is required
-          if (!this.currentEditingProduct) {
-            if (!this.uploadedFiles.product || !(this.uploadedFiles.product instanceof File)) {
-              throw new Error('Product file is required for new products');
-            }
-          }
+      const { productId, upload } = prepJson;
+      const fileMeta = { product: null, preview: null };
 
-          // Add files with validation
-          if (this.uploadedFiles.product && this.uploadedFiles.product instanceof File) {
-            console.log('Adding product file:', this.uploadedFiles.product.name, 'Size:', this.uploadedFiles.product.size);
-            formData.append('productFile', this.uploadedFiles.product);
-          }
+      // Step 2: upload files directly to Supabase using signed URLs
+      async function putSigned(url, file) {
+        const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+        if (!res.ok) {
+          let msg = `Upload failed (${res.status})`;
+          try { msg = await res.text(); } catch {}
+          throw new Error(msg);
+        }
+      }
 
-          if (this.uploadedFiles.preview && this.uploadedFiles.preview instanceof File) {
-            console.log('Adding preview file:', this.uploadedFiles.preview.name, 'Size:', this.uploadedFiles.preview.size);
-            formData.append('previewFile', this.uploadedFiles.preview);
-          }
-
-          // Add resource images with validation
-          if (this.uploadedFiles['resource-images'] && Array.isArray(this.uploadedFiles['resource-images']) && this.uploadedFiles['resource-images'].length > 0) {
-            this.uploadedFiles['resource-images'].forEach((file, index) => {
-              if (file instanceof File) {
-                console.log('Adding resource image:', file.name, 'Size:', file.size);
-                formData.append('resourceImages', file);
-              }
-            });
-          }
-
-          formData.append('token', authToken);
-
-          console.log('FormData entries for attempt:', Array.from(formData.entries()).map(([key, value]) => {
-            if (value instanceof File) {
-              return [key, `File: ${value.name} (${value.size} bytes, ${value.type})`];
-            } else {
-              return [key, typeof value === 'string' ? value.substring(0, 100) : value];
-            }
-          }));
-
-          // Additional debugging for FormData structure
-          console.log('FormData keys:', Array.from(formData.keys()));
-          console.log('ProductData being sent:', JSON.stringify(productData, null, 2));
-
-          // Create AbortController for timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => {
-            console.log('Request timeout after 30 seconds');
-            controller.abort();
-          }, 30000); // 30 second timeout
-
-          try {
-            console.log('About to make fetch request...');
-
-            // Debug the request that's about to be sent
-            console.log('Request details:');
-            console.log('- Method: POST');
-            console.log('- Endpoint:', endpoint);
-            console.log('- FormData content-type will be auto-set by browser');
-            console.log('- FormData boundary will be auto-generated');
-
-            response = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${authToken}`
-              },
-              body: formData,
-              signal: controller.signal
-              // Don't set Content-Type header - let browser set it with boundary
-            });
-
-            console.log('Fetch completed, response received');
-            console.log('Response status:', response.status, response.statusText);
-            console.log('Response bodyUsed:', response.bodyUsed);
-            clearTimeout(timeoutId);
-          } catch (fetchError) {
-            clearTimeout(timeoutId);
-            console.error('Fetch error:', fetchError);
-
-            if (fetchError.name === 'AbortError') {
-              throw new Error('Request timed out. Please try again.');
-            } else if (fetchError.message.includes('Failed to fetch')) {
-              throw new Error('Network error. Please check your connection and try again.');
-            } else {
-              throw new Error(`Request failed: ${fetchError.message}`);
-            }
-          }
-
-          // Debug response before processing
-          console.log('About to process response...');
-          console.log('Response ok:', response.ok);
-          console.log('Response status:', response.status);
-          console.log('Response bodyUsed before processing:', response.bodyUsed);
-
-          // Process the response (handles all success and error cases)
-          result = await this.processResponse(response);
-
-          // Check if the result indicates an error
-          if (result.error) {
-            console.error('Server returned error:', result);
-
-            // Create a detailed error message
-            let detailedError = `Server error: ${result.status}`;
-
-            if (result.error && typeof result.error === 'string') {
-              detailedError = result.error;
-            } else if (result.error && typeof result.error === 'object') {
-              detailedError = JSON.stringify(result.error);
-            }
-
-            if (result.details) {
-              console.error('Error details:', result.details);
-              if (result.details.message) {
-                detailedError += `\n\nDetails: ${result.details.message}`;
-              }
-              if (result.details.rawResponse) {
-                detailedError += `\n\nServer response: ${result.details.rawResponse}`;
-              }
-              if (result.details.stack) {
-                detailedError += `\n\nStack trace: ${result.details.stack}`;
-              }
-            }
-
-            throw new Error(detailedError);
-          }
-
-          // If we get here, the request was successful
-          console.log('Request completed successfully');
-          break;
-
-        } catch (error) {
-          lastError = error;
-          console.error(`Attempt ${attempt + 1} failed:`, error.message);
-
-          // If this is the last attempt, throw the error
-          if (attempt === maxRetries - 1) {
-            throw error;
-          }
-
-          // Wait a bit before retrying (only for certain types of errors)
-          if (error.message.includes('body') || error.message.includes('stream') || error.message.includes('clone')) {
-            console.log('Waiting 1 second before retry...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } else {
-            // For other errors, don't retry
-            throw error;
+      if (upload.product?.signedUrl && this.uploadedFiles.product) {
+        await putSigned(upload.product.signedUrl, this.uploadedFiles.product);
+        fileMeta.product = { originalName: this.uploadedFiles.product.name, contentType: this.uploadedFiles.product.type, size: this.uploadedFiles.product.size };
+      }
+      if (upload.preview?.signedUrl && this.uploadedFiles.preview) {
+        await putSigned(upload.preview.signedUrl, this.uploadedFiles.preview);
+        fileMeta.preview = { originalName: this.uploadedFiles.preview.name, contentType: this.uploadedFiles.preview.type, size: this.uploadedFiles.preview.size };
+      }
+      const uploadedImagePaths = [];
+      if (Array.isArray(upload.resourceImages) && Array.isArray(this.uploadedFiles['resource-images'])) {
+        for (let i = 0; i < upload.resourceImages.length; i++) {
+          const u = upload.resourceImages[i];
+          const f = this.uploadedFiles['resource-images'][i];
+          if (u?.signedUrl && f) {
+            await putSigned(u.signedUrl, f);
+            uploadedImagePaths.push(u.path);
           }
         }
       }
+
+      // Step 3: finalize product in DB
+      const finalizePayload = {
+        productData,
+        productId,
+        paths: {
+          product: upload.product?.path || null,
+          preview: upload.preview?.path || null,
+          resourceImages: uploadedImagePaths
+        },
+        fileMeta
+      };
+      const finRes = await fetch(functionsUrl('finalize-product'), {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalizePayload)
+      });
+      const finJson = await this.processResponse(finRes);
+      if (finJson.error) throw new Error(finJson.error);
+
+      console.log('Product created via signed uploads');
 
       // Show success modal
       this.showSuccessModal();
