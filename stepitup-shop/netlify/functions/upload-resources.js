@@ -4,6 +4,7 @@ const path = require('path');
 const { verifyAdminToken } = require('./admin-auth');
 
 const ALLOWED_GRADES = new Set([
+  'Kinder',
   'Grade 1',
   'Grade 2',
   'Grade 3',
@@ -64,11 +65,8 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid form data' }) };
     }
 
-    const bucketRaw = String(parsed.bucket || parsed.targetBucket || 'resources').toLowerCase();
-    const bucket = bucketRaw === 'kinder' ? 'kinder' : 'resources';
-
     const grade = String(parsed.grade || '').trim();
-    if (!ALLOWED_GRADES.has(grade) && bucket === 'resources') {
+    if (!ALLOWED_GRADES.has(grade)) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid grade' }) };
     }
 
@@ -78,7 +76,7 @@ exports.handler = async (event) => {
     }
 
     // Validate bucket exists
-    const { error: bucketErr } = await supabase.storage.from(bucket).list('', { limit: 1 });
+    const { error: bucketErr } = await supabase.storage.from('resources').list('', { limit: 1 });
     if (bucketErr && /not found|No such file or directory|resource was not found/i.test(bucketErr.message || '')) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Supabase bucket "resources" not found' }) };
     }
@@ -89,7 +87,7 @@ exports.handler = async (event) => {
         const safeName = sanitizeFileName(f.filename || 'upload');
         const storagePath = `${grade}/${safeName}`;
         const { error: upErr } = await supabase.storage
-          .from(bucket)
+          .from('resources')
           .upload(storagePath, f.content, {
             contentType: f.contentType || 'application/octet-stream',
             upsert: false

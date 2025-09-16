@@ -33,6 +33,8 @@
         this.updateBulkState();
       });
       this.list.addEventListener('change', (e)=>{ if(e.target.matches('.free-item-cb')) this.updateBulkState(); });
+      // Load immediately after successful admin auth
+      window.addEventListener('admin-auth-success', ()=> this.load());
 
       // Modal handlers
       if(this.deleteCancel){ this.deleteCancel.addEventListener('click', ()=> this.closeDeleteModal()); }
@@ -48,7 +50,7 @@
         let tries = 0; const t = setInterval(()=>{
           const tok = localStorage.getItem('admin_token');
           if(tok){ clearInterval(t); this.load(); }
-          else if(++tries>50){ clearInterval(t); this.list.innerHTML = '<div class="no-products-message"><p>Please sign in to view resources.</p></div>'; }
+          else if(++tries>150){ clearInterval(t); this.list.innerHTML = '<div class="no-products-message"><p>Please sign in to view resources.</p></div>'; }
         }, 200);
       }
     }

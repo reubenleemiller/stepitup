@@ -16,7 +16,6 @@
       if(this.mounted) return; this.mounted = true;
       this.section = document.getElementById('resources-upload-section');
       if(!this.section) return;
-      this.bucketSelect = $('#bucket-select', this.section);
       this.gradeSelect = $('#grade-folder-select', this.section);
       this.fileInput = $('#resources-file-input', this.section);
       this.queueList = $('#upload-queue', this.section);
@@ -119,7 +118,6 @@
       statusEl.textContent = 'Uploading...';
 
       const fd = new FormData();
-      fd.append('bucket', (this.bucketSelect && this.bucketSelect.value) || 'resources');
       fd.append('grade', item.grade);
       fd.append('file', item.file);
 

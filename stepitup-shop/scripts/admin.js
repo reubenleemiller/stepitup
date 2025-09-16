@@ -201,9 +201,11 @@ class AdminManager {
       const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours
       localStorage.setItem('admin_token', result.token);
       localStorage.setItem('admin_token_expiry', expiryTime.toString());
-      
+
       this.isAuthenticated = true;
-      
+
+      try { window.dispatchEvent(new CustomEvent('admin-auth-success', { detail: { username: credentials.username } })); } catch(_) {}
+
       // Store session info if provided
       if (result.sessionToken) localStorage.setItem('admin_session_token', result.sessionToken);
       if (result.sessionId) localStorage.setItem('admin_session_id', String(result.sessionId));

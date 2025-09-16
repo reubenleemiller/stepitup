@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { verifyAdminToken } = require('./admin-auth');
 
-const GRADES = ['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6'];
+const GRADES = ['Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6'];
 
 exports.handler = async (event) => {
   const headers = {

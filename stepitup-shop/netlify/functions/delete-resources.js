@@ -29,7 +29,7 @@ exports.handler = async (event) => {
     }
 
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    const SAFE_PATHS = paths.filter(p => typeof p === 'string' && /^(Grade [1-6])\/.+/.test(p));
+    const SAFE_PATHS = paths.filter(p => typeof p === 'string' && /^(Kinder|Grade [1-6])\/.+/.test(p));
     if (SAFE_PATHS.length === 0) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'No valid file paths to delete' }) };
     }
