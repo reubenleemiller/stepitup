@@ -20,6 +20,8 @@
 .current-session-badge{display:inline-flex;align-items:center;background:#2c77cc;color:#fff;border-radius:999px;padding:.15rem .5rem;font-size:.72rem;font-weight:700;margin-left:.5rem}
 tr.is-current-session{box-shadow:inset 3px 0 0 0 #2c77cc}
 
+.logs-pagination{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;margin-top: .75rem}
+.logs-page-info{color:#4a5568;font-weight:600}
 /* Reviews modal */
 .reviews-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:10000}
 .reviews-modal.show{display:flex}

@@ -1091,6 +1091,8 @@ body {
 .control-btn.loading .btn-text {
   display: none !important;
 }
+/* Center spinner within submit button during loading */
+.submit-btn.loading { justify-content: center; }
 
 /* Make embedded spinner small and unobtrusive */
 .submit-btn .btn-spinner i,
@@ -1481,13 +1483,19 @@ body {
 }
 
 .free-resources-list{ display:flex; flex-direction:column; gap:0.75rem; }
-.free-file-row{ display:flex; align-items:center; justify-content:space-between; padding:0.75rem; border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; }
-.free-file-left{ display:flex; align-items:center; gap:0.6rem; }
+.free-file-row{ display:flex; align-items:center; justify-content:space-between; padding:0.75rem; border:1px solid #e2e8f0; background:#f8fafc; border-radius:10px; overflow:hidden; }
+.free-file-left{ display:flex; align-items:center; gap:0.6rem; flex:1 1 auto; min-width:0; }
 .free-file-left i{ color:#2c77cc; }
-.free-file-meta{ display:flex; flex-direction:column; }
-.free-file-name{ font-weight:600; color:#2d3748; }
-.free-file-sub{ color:#718096; font-size:0.85rem; }
-@media (max-width:768px){ .free-file-row{ flex-direction:column; align-items:flex-start; gap:0.5rem; } }
+.free-file-meta{ display:flex; flex-direction:column; min-width:0; }
+.free-file-name{ font-weight:600; color:#2d3748; overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
+.free-file-sub{ color:#718096; font-size:0.85rem; overflow-wrap:anywhere; word-break:break-word; white-space:normal; }
+@media (max-width:768px){
+  .free-file-row{ flex-direction:column; align-items:flex-start; gap:0.5rem; }
+  .free-file-actions{ width:100%; display:flex; justify-content:flex-end; }
+  /* Stack controls and make buttons uniform width on mobile */
+  #free-resources-section .manage-controls > div{ flex-direction:column; align-items:stretch !important; }
+  #free-resources-section .manage-controls .control-btn{ width:100%; justify-content:center; }
+}
 
 /* Responsive Design */
 @media (max-width: 768px) {

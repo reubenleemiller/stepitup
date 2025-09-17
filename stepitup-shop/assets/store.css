@@ -940,6 +940,10 @@ margin-top: 0.2rem;
   margin-bottom: 1rem;
   font-size: 0.95rem;
 }
+/* Ensure links inside product descriptions are styled without affecting buttons */
+.product-description a { color: #2c77cc; text-decoration: underline; }
+.product-card .product-actions button,
+.product-card .product-actions a { text-decoration: none; }
 
 .description-truncated {
   display: -webkit-box;

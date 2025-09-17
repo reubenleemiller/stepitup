@@ -1570,8 +1570,7 @@ class AdminManager {
         exec('insertUnorderedList');
         break;
       case 'link': {
-        const url = prompt('Enter URL');
-        if (url) exec('createLink', url);
+        this.showInsertLinkModal(editor);
         break;
       }
       case 'clear':
@@ -1595,6 +1594,179 @@ class AdminManager {
     }
 
     this.updateToolbarState(editor);
+  }
+
+  /**
+   * Show insert link modal and handle insertion
+   */
+  showInsertLinkModal(editor) {
+    const modal = document.getElementById('insert-link-modal');
+    const backdrop = modal ? modal.querySelector('.reviews-modal-backdrop') : null;
+    const closeBtn = document.getElementById('insert-link-close');
+    const cancelBtn = document.getElementById('insert-link-cancel');
+    const insertBtn = document.getElementById('insert-link-insert');
+    const urlInput = document.getElementById('insert-link-url');
+    const textInput = document.getElementById('insert-link-text');
+    const newTabInput = document.getElementById('insert-link-newtab');
+
+    if (!modal || !urlInput || !insertBtn) return;
+
+    // Save current selection inside editor
+    this._savedSelection = this.saveEditorSelection(editor);
+
+    // Prefill text from selection if any
+    const sel = window.getSelection();
+    const selectedText = sel && sel.rangeCount ? sel.toString() : '';
+    textInput.value = selectedText || '';
+
+    // Reset fields
+    urlInput.value = '';
+
+    // Show modal
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    const onClose = (e) => {
+      e && e.preventDefault();
+      modal.classList.remove('show');
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+      cleanup();
+    };
+
+    const onInsert = async (e) => {
+      e.preventDefault();
+      const url = (urlInput.value || '').trim();
+      if (!url) { urlInput.focus(); return; }
+
+      // Visual loading on insert button
+      insertBtn.classList.add('loading');
+      try {
+        await this.insertLinkAtSelection(editor, url, (textInput.value || '').trim(), !!newTabInput.checked);
+        onClose(e);
+      } finally {
+        insertBtn.classList.remove('loading');
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose(e);
+      if (e.key === 'Enter' && (e.target === urlInput || e.target === textInput)) onInsert(e);
+    };
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (backdrop) backdrop.removeEventListener('click', onClose);
+      if (closeBtn) closeBtn.removeEventListener('click', onClose);
+      if (cancelBtn) cancelBtn.removeEventListener('click', onClose);
+      insertBtn.removeEventListener('click', onInsert);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    if (backdrop) backdrop.addEventListener('click', onClose);
+    if (closeBtn) closeBtn.addEventListener('click', onClose);
+    if (cancelBtn) cancelBtn.addEventListener('click', onClose);
+    insertBtn.addEventListener('click', onInsert);
+
+    // Focus URL input
+    setTimeout(() => urlInput.focus(), 0);
+  }
+
+  /**
+   * Insert link using saved selection
+   */
+  async insertLinkAtSelection(editor, url, text, newTab) {
+    // Normalize URL (add protocol if missing)
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    // Restore selection
+    this.restoreEditorSelection(editor, this._savedSelection);
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+
+    if (sel.isCollapsed) {
+      // No text selected: insert new anchor element
+      const a = document.createElement('a');
+      a.href = url;
+      if (newTab) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.textContent = text || url;
+      range.insertNode(a);
+      // Move caret after the link
+      range.setStartAfter(a);
+      range.setEndAfter(a);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      // Text selected: either replace with provided text or keep selection
+      if (text) {
+        // Replace selection with provided text wrapped in anchor
+        const a = document.createElement('a');
+        a.href = url;
+        if (newTab) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+        a.textContent = text;
+        range.deleteContents();
+        range.insertNode(a);
+        // Set selection after the link
+        range.setStartAfter(a);
+        range.setEndAfter(a);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        // Wrap current selection
+        document.execCommand('createLink', false, url);
+        // Ensure target on created link
+        try {
+          const linkEl = this.getLinkUnderSelection();
+          if (linkEl && newTab) { linkEl.target = '_blank'; linkEl.rel = 'noopener noreferrer'; }
+        } catch(_) {}
+      }
+    }
+
+    // Update hidden input value to keep editor and form in sync
+    const hiddenDesc = document.getElementById('product-description');
+    if (hiddenDesc) hiddenDesc.value = editor.innerHTML.trim();
+
+    // Refresh toolbar state
+    this.updateToolbarState(editor);
+  }
+
+  /** Save current selection relative to editor */
+  saveEditorSelection(editor) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        return range.cloneRange();
+      }
+    }
+    return null;
+  }
+
+  /** Restore a previously saved selection */
+  restoreEditorSelection(editor, savedRange) {
+    try {
+      if (!savedRange) return;
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    } catch (_) {}
+  }
+
+  /** Find nearest link element from current selection */
+  getLinkUnderSelection() {
+    try {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return null;
+      let node = sel.getRangeAt(0).commonAncestorContainer;
+      node = node.nodeType === 1 ? node : node.parentElement;
+      return node && node.closest ? node.closest('a[href]') : null;
+    } catch(_) { return null; }
   }
 
   /**
@@ -1758,6 +1930,9 @@ class AdminManager {
   }
 
   async loadAdminActivity() {
+    this._activityAllRows = [];
+    this._activityPageIndex = 0;
+    this._activityPageSize = 25;
     const tbody = document.getElementById('activity-tbody');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
@@ -1768,9 +1943,12 @@ class AdminManager {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load activity');
-      this.renderActivityTable(json.activity || []);
+      this._activityAllRows = json.activity || [];
+      this._activityPageIndex = 0;
+      this.renderActivityTablePage();
+      this.setupActivityPagination();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">${this.escapeHtml(e.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan=\"6\" style=\"color:#e53e3e;\">${this.escapeHtml(e.message)}</td></tr>`;
     }
   }
 
@@ -1800,6 +1978,9 @@ class AdminManager {
   }
 
   async loadAdminReviews() {
+    this._reviewsAllRows = [];
+    this._reviewsPageIndex = 0;
+    this._reviewsPageSize = 10;
     const tbody = document.getElementById('reviews-tbody');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
@@ -1809,20 +1990,29 @@ class AdminManager {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load reviews');
-      this.renderReviewsTable(json.reviews || []);
+      this._reviewsAllRows = json.reviews || [];
+      this._reviewsPageIndex = 0;
+      this.renderReviewsTablePage();
+      this.setupReviewsPagination();
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="6" style="color:#e53e3e;">${this.escapeHtml(e.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan=\"6\" style=\"color:#e53e3e;\">${this.escapeHtml(e.message)}</td></tr>`;
     }
   }
 
-  renderActivityTable(rows) {
+  renderActivityTablePage() {
+    const rows = this._activityAllRows || [];
+    const start = this._activityPageIndex * this._activityPageSize;
+    const end = start + this._activityPageSize;
+    const pageRows = rows.slice(start, end);
     const tbody = document.getElementById('activity-tbody');
+    const info = document.getElementById('activity-page-info');
     if (!tbody) return;
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="6">No activity found</td></tr>';
+      if (info) info.textContent = 'Page 0 of 0';
       return;
     }
-    tbody.innerHTML = rows.map(r => `
+    tbody.innerHTML = pageRows.map(r => `
       <tr>
         <td>${this.formatDateTime(r.created_at)}</td>
         <td>${this.escapeHtml(r.username || '')}</td>
@@ -1832,6 +2022,21 @@ class AdminManager {
         <td>${this.escapeHtml(r.ip_address || '')}</td>
       </tr>
     `).join('');
+    const totalPages = Math.max(1, Math.ceil(rows.length / this._activityPageSize));
+    if (info) info.textContent = `Page ${this._activityPageIndex + 1} of ${totalPages}`;
+  }
+
+  setupActivityPagination() {
+    const prev = document.getElementById('activity-prev');
+    const next = document.getElementById('activity-next');
+    const update = () => {
+      const totalPages = Math.max(1, Math.ceil((this._activityAllRows || []).length / this._activityPageSize));
+      if (prev) prev.disabled = this._activityPageIndex <= 0;
+      if (next) next.disabled = this._activityPageIndex >= totalPages - 1;
+    };
+    if (prev) prev.onclick = () => { if (this._activityPageIndex > 0) { this._activityPageIndex--; this.renderActivityTablePage(); update(); } };
+    if (next) next.onclick = () => { const totalPages = Math.ceil((this._activityAllRows || []).length / this._activityPageSize); if (this._activityPageIndex < totalPages - 1) { this._activityPageIndex++; this.renderActivityTablePage(); update(); } };
+    update();
   }
 
   formatDateTime(value) {
@@ -1841,18 +2046,24 @@ class AdminManager {
     return d.toLocaleString();
   }
 
-  renderReviewsTable(rows) {
+  renderReviewsTablePage() {
+    const rows = this._reviewsAllRows || [];
+    const start = this._reviewsPageIndex * this._reviewsPageSize;
+    const end = start + this._reviewsPageSize;
+    const pageRows = rows.slice(start, end);
     const tbody = document.getElementById('reviews-tbody');
+    const info = document.getElementById('reviews-page-info');
     if (!tbody) return;
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="6">No reviews found</td></tr>';
+      if (info) info.textContent = 'Page 0 of 0';
       return;
     }
-    tbody.innerHTML = rows.map(r => `
+    tbody.innerHTML = pageRows.map(r => `
       <tr data-review-id="${r.id}" data-review-text="${this.escapeHtml(r.review || '')}">
         <td>${this.formatDateTime(r.created_at)}</td>
         <td>
-          <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style=\"display:flex;align-items:center;gap:.5rem;\">
             <img src="${this.escapeHtml(r.image_url || '')}" alt="review" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#e2e8f0;" />
             <button class="control-btn change-image-btn">
               <span class="btn-text"><i class="fas fa-image"></i> Change</span>
@@ -1864,7 +2075,7 @@ class AdminManager {
         <td>
           <input type="text" class="reviewer-name-input" value="${this.escapeHtml(r.name || '')}" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:6px;" />
           <div class="inline-stars" data-rating="${r.rating ?? 0}">
-            ${[1,2,3,4,5].map(v => `<i data-value="${v}" class="fa-star ${v <= (r.rating||0) ? 'fas filled' : 'far'}"></i>`).join('')}
+            ${[1,2,3,4,5].map(v => `<i data-value="${v}" class="fa-star ${v <= (r.rating || 0) ? 'fas filled' : 'far'}"></i>`).join('')}
           </div>
         </td>
         <td>
@@ -1887,8 +2098,28 @@ class AdminManager {
         </td>
       </tr>
     `).join('');
+    const totalPages = Math.max(1, Math.ceil(rows.length / this._reviewsPageSize));
+    if (info) info.textContent = `Page ${this._reviewsPageIndex + 1} of ${totalPages}`;
 
-    // Wire events
+    this.wireReviewsTableRowEvents();
+  }
+
+  setupReviewsPagination() {
+    const prev = document.getElementById('reviews-prev');
+    const next = document.getElementById('reviews-next');
+    const update = () => {
+      const totalPages = Math.max(1, Math.ceil((this._reviewsAllRows || []).length / this._reviewsPageSize));
+      if (prev) prev.disabled = this._reviewsPageIndex <= 0;
+      if (next) next.disabled = this._reviewsPageIndex >= totalPages - 1;
+    };
+    if (prev) prev.onclick = () => { if (this._reviewsPageIndex > 0) { this._reviewsPageIndex--; this.renderReviewsTablePage(); update(); } };
+    if (next) next.onclick = () => { const totalPages = Math.ceil((this._reviewsAllRows || []).length / this._reviewsPageSize); if (this._reviewsPageIndex < totalPages - 1) { this._reviewsPageIndex++; this.renderReviewsTablePage(); update(); } };
+    update();
+  }
+
+  wireReviewsTableRowEvents() {
+    const tbody = document.getElementById('reviews-tbody');
+
     tbody.querySelectorAll('.change-image-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tr = e.currentTarget.closest('tr');
@@ -1928,7 +2159,6 @@ class AdminManager {
       });
     });
 
-    // Inline star rating handlers
     tbody.querySelectorAll('.inline-stars').forEach(wrapper => {
       wrapper.addEventListener('click', (e) => {
         const icon = e.target.closest('.fa-star');
@@ -1978,7 +2208,6 @@ class AdminManager {
       });
     });
 
-    // Open editor from inline button
     tbody.querySelectorAll('.edit-text-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tr = e.currentTarget.closest('tr');

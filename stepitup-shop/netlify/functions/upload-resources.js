@@ -107,7 +107,7 @@ exports.handler = async (event) => {
       const userAgent = event.headers['user-agent'] || null;
       await supabase.rpc('log_admin_activity', {
         p_username: verified.data?.username || 'admin',
-        p_action: 'upload_resources',
+        p_action: 'create_resource',
         p_resource_type: 'storage',
         p_resource_id: null,
         p_details: { grade, count: uploads.length, uploads },

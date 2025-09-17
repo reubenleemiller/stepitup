@@ -449,6 +449,11 @@
                                     <tbody id="activity-tbody"></tbody>
                                 </table>
                             </div>
+                            <div class="logs-pagination" id="activity-pagination">
+                              <button class="control-btn" id="activity-prev"><i class="fas fa-chevron-left"></i> Prev</button>
+                              <div class="logs-page-info" id="activity-page-info">Page 1</div>
+                              <button class="control-btn" id="activity-next">Next <i class="fas fa-chevron-right"></i></button>
+                            </div>
                         </div>
 
                         <!-- Manage Reviews -->
@@ -476,6 +481,11 @@
                                     </thead>
                                     <tbody id="reviews-tbody"></tbody>
                                 </table>
+                            </div>
+                            <div class="logs-pagination" id="reviews-pagination">
+                              <button class="control-btn" id="reviews-prev"><i class="fas fa-chevron-left"></i> Prev</button>
+                              <div class="logs-page-info" id="reviews-page-info">Page 1</div>
+                              <button class="control-btn" id="reviews-next">Next <i class="fas fa-chevron-right"></i></button>
                             </div>
                         </div>
                     </div>
@@ -593,6 +603,39 @@
           <button class="control-btn reviews-cancel-btn" id="review-editor-cancel">Cancel</button>
           <button class="control-btn" id="review-editor-save">
             <span class="btn-text"><i class="fas fa-save"></i> Save</span>
+            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insert Link Modal -->
+    <div id="insert-link-modal" class="reviews-modal" style="display:none;">
+      <div class="reviews-modal-backdrop"></div>
+      <div class="reviews-modal-content">
+        <div class="reviews-modal-header">
+          <h3><i class="fas fa-link"></i> Insert Link</h3>
+          <button class="reviews-modal-close" id="insert-link-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="reviews-modal-body">
+          <div class="reviews-field">
+            <label for="insert-link-url">URL</label>
+            <input type="url" id="insert-link-url" placeholder="https://example.com" />
+          </div>
+          <div class="reviews-field">
+            <label for="insert-link-text">Text (optional)</label>
+            <input type="text" id="insert-link-text" placeholder="Link text" />
+          </div>
+          <div class="reviews-field">
+            <label style="display:flex; align-items:center; gap:0.5rem;">
+              <input type="checkbox" id="insert-link-newtab" checked /> Open in new tab
+            </label>
+          </div>
+        </div>
+        <div class="reviews-modal-footer">
+          <button class="control-btn reviews-cancel-btn" id="insert-link-cancel">Cancel</button>
+          <button class="control-btn" id="insert-link-insert">
+            <span class="btn-text"><i class="fas fa-link"></i> Insert</span>
             <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
           </button>
         </div>
