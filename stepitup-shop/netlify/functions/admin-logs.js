@@ -13,7 +13,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Cache-Control': 'no-store, max-age=0, must-revalidate'
 };
 
@@ -41,6 +41,89 @@ exports.handler = async (event) => {
 
     if (type !== 'sessions' && type !== 'activity') {
       return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid type parameter' }) };
+    }
+
+    // Handle POST request for session actions like marking inactive
+    if (event.httpMethod === 'POST' && type === 'sessions') {
+      let body = {};
+      try {
+        if (event.body) {
+          body = JSON.parse(event.body);
+        }
+      } catch (e) {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON body' }) };
+      }
+
+      if (body.action === 'mark_inactive') {
+        const { session_token, session_id } = body;
+        
+        if (!session_token && !session_id) {
+          return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'session_token or session_id required' }) };
+        }
+
+        try {
+          let query = supabase.from('admin_sessions').update({ is_active: false });
+          
+          if (session_token) {
+            query = query.eq('session_token', session_token);
+          } else if (session_id) {
+            query = query.eq('id', session_id);
+          }
+          
+          const { error } = await query;
+          
+          if (error) {
+            console.error('Error marking session inactive:', error);
+            return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to mark session inactive' }) };
+          }
+
+          return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) };
+        } catch (error) {
+          console.error('Error in mark_inactive:', error);
+          return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Internal server error' }) };
+        }
+      }
+
+      if (body.action === 'cleanup_expired') {
+        try {
+          // Mark all sessions as inactive where expires_at is in the past
+          const { data, error } = await supabase
+            .from('admin_sessions')
+            .update({ is_active: false })
+            .eq('is_active', true)
+            .lt('expires_at', new Date().toISOString())
+            .select('id, username, expires_at');
+          
+          if (error) {
+            console.error('Error marking expired sessions inactive:', error);
+            return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to cleanup expired sessions' }) };
+          }
+
+          const expiredCount = data ? data.length : 0;
+          
+          // Log cleanup activity for audit trail
+          if (expiredCount > 0) {
+            console.log(`Marked ${expiredCount} expired sessions as inactive at ${new Date().toISOString()}`);
+            
+            // Log each expired session for audit purposes
+            for (const session of data) {
+              console.log(`Expired session cleanup: ID ${session.id}, user: ${session.username}, expired at: ${session.expires_at}`);
+            }
+          }
+          
+          return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ 
+            success: true, 
+            expired_sessions_marked: expiredCount,
+            sessions: data || [],
+            cleanup_timestamp: new Date().toISOString()
+          }) };
+        } catch (error) {
+          console.error('Error in cleanup_expired:', error);
+          return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Internal server error' }) };
+        }
+      }
+
+      return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Unknown action' }) };
     }
 
     if (event.httpMethod === 'DELETE' && type === 'sessions') {

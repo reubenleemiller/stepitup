@@ -161,6 +161,44 @@ exports.handler = async function(event, context) {
         }
       }
 
+      // --- ADMIN DOWNLOAD LOGGING ---
+      try {
+        // Only log if admin download (look for admin token in headers)
+        const authHeader = event.headers['authorization'] || event.headers['Authorization'] || '';
+        const { verifyAdminToken } = require('./admin-auth');
+        const { createClient } = require('@supabase/supabase-js');
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (authHeader && authHeader.startsWith('Bearer ') && supabaseUrl && supabaseKey) {
+          const token = authHeader.replace('Bearer ', '');
+          const verification = verifyAdminToken(token);
+          if (verification.valid) {
+            const supabase = createClient(supabaseUrl, supabaseKey);
+            const username = verification.data.username || 'admin';
+            const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+            const userAgent = event.headers['user-agent'] || null;
+            for (const product of products) {
+              await supabase.from('admin_activity_log').insert({
+                username,
+                action: 'download_resource',
+                resource_type: 'product',
+                resource_id: product.id,
+                details: {
+                  product_id: product.id,
+                  product_name: product.name,
+                  resource_path: product.resource_path,
+                  timestamp: new Date().toISOString()
+                },
+                ip_address: clientIP,
+                user_agent: userAgent
+              });
+            }
+          }
+        }
+      } catch (logErr) {
+        console.warn('Failed to log admin download activity:', logErr);
+      }
+
       // Generate the ZIP file
       const zipBuffer = await zip.generateAsync({
         type: 'uint8array',

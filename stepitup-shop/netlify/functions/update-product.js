@@ -83,6 +83,28 @@ exports.handler = async (event, context) => {
       if (currentProduct.resource_path) {
         console.log(`Deleting old product file: ${currentProduct.resource_path}`);
         await supabase.storage.from('paid-resources').remove([currentProduct.resource_path]);
+        
+        // Log storage deletion
+        try {
+          const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+          const userAgent = event.headers['user-agent'] || null;
+          await supabase.from('admin_activity_log').insert({
+            username: tokenVerification.data.username || 'admin',
+            action: 'delete_storage_file',
+            resource_type: 'storage',
+            resource_id: currentProduct.resource_path,
+            details: {
+              file_path: currentProduct.resource_path,
+              bucket: 'paid-resources',
+              context: 'product_update',
+              product_id: productId
+            },
+            ip_address: clientIP,
+            user_agent: userAgent
+          });
+        } catch (logError) {
+          console.warn('Failed to log storage deletion:', logError);
+        }
       }
 
       // Also delete any files in the products folder for this product
@@ -94,6 +116,30 @@ exports.handler = async (event, context) => {
         if (existingFiles && existingFiles.length > 0) {
           const filePaths = existingFiles.map(file => `products/${productId}/${file.name}`);
           await supabase.storage.from('paid-resources').remove(filePaths);
+          
+          // Log bulk storage deletion
+          try {
+            const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+            const userAgent = event.headers['user-agent'] || null;
+            await supabase.from('admin_activity_log').insert({
+              username: tokenVerification.data.username || 'admin',
+              action: 'delete_storage_folder',
+              resource_type: 'storage',
+              resource_id: `products/${productId}`,
+              details: {
+                folder_path: `products/${productId}`,
+                files_deleted: filePaths,
+                file_count: filePaths.length,
+                bucket: 'paid-resources',
+                context: 'product_update',
+                product_id: productId
+              },
+              ip_address: clientIP,
+              user_agent: userAgent
+            });
+          } catch (logError) {
+            console.warn('Failed to log storage folder deletion:', logError);
+          }
         }
       } catch (cleanupError) {
         console.warn('Error cleaning up old product files:', cleanupError);
@@ -149,6 +195,30 @@ exports.handler = async (event, context) => {
             console.warn('Error deleting folder contents:', deleteError);
           } else {
             console.log('✅ Successfully deleted entire product folder');
+            
+            // Log resource images deletion
+            try {
+              const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+              const userAgent = event.headers['user-agent'] || null;
+              await supabase.from('admin_activity_log').insert({
+                username: tokenVerification.data.username || 'admin',
+                action: 'delete_storage_folder',
+                resource_type: 'storage',
+                resource_id: `resource-images/${productId}`,
+                details: {
+                  folder_path: `resource-images/${productId}`,
+                  files_deleted: filePaths,
+                  file_count: filePaths.length,
+                  bucket: 'resource-images',
+                  context: 'product_update',
+                  product_id: productId
+                },
+                ip_address: clientIP,
+                user_agent: userAgent
+              });
+            } catch (logError) {
+              console.warn('Failed to log resource images deletion:', logError);
+            }
           }
         } else {
           console.log('No existing files found in product folder');
@@ -303,6 +373,30 @@ exports.handler = async (event, context) => {
               console.warn('Error deleting preview folder:', deleteError);
             } else {
               console.log('✅ Successfully deleted entire preview folder');
+              
+              // Log preview files deletion
+              try {
+                const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+                const userAgent = event.headers['user-agent'] || null;
+                await supabase.from('admin_activity_log').insert({
+                  username: tokenVerification.data.username || 'admin',
+                  action: 'delete_storage_folder',
+                  resource_type: 'storage',
+                  resource_id: `previews/${productId}`,
+                  details: {
+                    folder_path: `previews/${productId}`,
+                    files_deleted: previewFilesToDelete,
+                    file_count: previewFilesToDelete.length,
+                    bucket: 'resource-previews',
+                    context: 'product_update',
+                    product_id: productId
+                  },
+                  ip_address: clientIP,
+                  user_agent: userAgent
+                });
+              } catch (logError) {
+                console.warn('Failed to log preview files deletion:', logError);
+              }
             }
           }
         } else {
@@ -362,27 +456,30 @@ exports.handler = async (event, context) => {
 
     console.log(`Product updated successfully: ${updatedProduct.id} by admin: ${tokenVerification.data.username}`);
 
-    // Log admin activity (update_product)
-    try {
-      const ipRaw = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
-      const clientIP = ipRaw ? String(ipRaw).split(',')[0].trim() : null;
-      const userAgent = event.headers['user-agent'] || null;
-      await supabase.from('admin_activity_log').insert({
-        username: tokenVerification.data.username || 'admin',
-        action: 'update_product',
-        resource_type: 'product',
-        details: {
-          product_id: updatedProduct.id,
-          name: updatedProduct.name,
-          category: updatedProduct.category,
-          price: updatedProduct.price,
-          featured: updatedProduct.featured
-        },
-        ip_address: clientIP,
-        user_agent: userAgent
-      });
-    } catch (logErr) {
-      console.warn('Failed to log update_product:', logErr);
+    // Log admin activity (update_product) with resource_id as a UUID, always log after any update
+    const ipRaw = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || null;
+    const clientIP = ipRaw ? String(ipRaw).split(',')[0].trim() : null;
+    const userAgent = event.headers['user-agent'] || null;
+    // Restore original logging: let DB default resource_id (uuid) and do not set explicitly
+    const logResult = await supabase.from('admin_activity_log').insert({
+      username: tokenVerification.data.username || 'admin',
+      action: 'update_product',
+      resource_type: 'product',
+      details: {
+        product_id: updatedProduct.id,
+        name: updatedProduct.name,
+        category: updatedProduct.category,
+        price: updatedProduct.price,
+        featured: updatedProduct.featured,
+        timestamp: new Date().toISOString()
+      },
+      ip_address: clientIP,
+      user_agent: userAgent
+    });
+    if (logResult.error) {
+      console.error('Failed to log update_product to admin_activity_log:', logResult.error);
+    } else {
+      console.log('Logged update_product to admin_activity_log:', logResult.data);
     }
 
     return {

@@ -1091,10 +1091,30 @@ body {
 .control-btn.loading .btn-text {
   display: none !important;
 }
-/* Center spinner within submit button during loading */
-.submit-btn.loading { justify-content: center; }
+/* Center spinner within all button types during loading */
+.submit-btn.loading,
+.login-btn.loading,
+.control-btn.loading { 
+  justify-content: center; 
+  align-items: center;
+}
 
-/* Make embedded spinner small and unobtrusive */
+/* Circular spinner style instead of rotating dots */
+.btn-spinner .spinner-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 2px solid #ffffff;
+  animation: btn-spin 0.8s linear infinite;
+}
+
+@keyframes btn-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Legacy fallback for FA spinner icons */
 .submit-btn .btn-spinner i,
 .login-btn .btn-spinner i,
 .control-btn .btn-spinner i {
@@ -1105,6 +1125,7 @@ body {
 .btn-spinner {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -1564,11 +1585,19 @@ body {
 
 @media (max-width: 480px) {
   .admin-main {
-    padding: 2rem 0;
+    padding: 1rem 0;
+  }
+
+  .admin-container {
+    padding: 0 0.5rem;
   }
 
   .section-header h2 {
     font-size: 1.5rem;
+  }
+
+  .section-header p {
+    font-size: 0.9rem;
   }
 
   .upload-area {
@@ -1578,6 +1607,71 @@ body {
 
   .file-drop-zone {
     padding: 1.5rem 1rem;
+  }
+
+  /* Make tables scrollable on mobile */
+  .logs-table {
+    font-size: 0.8rem;
+  }
+
+  .logs-table th,
+  .logs-table td {
+    padding: 0.5rem 0.3rem;
+    white-space: nowrap;
+  }
+
+  /* Stack form elements */
+  .form-row {
+    gap: 0.5rem;
+  }
+
+  /* Adjust modal content for mobile */
+  .modal-content,
+  .login-content {
+    padding: 1.5rem 1rem;
+    margin: 0.5rem;
+  }
+
+  /* Improve delete modal on mobile */
+  .delete-modal-content {
+    padding: 1.5rem 1rem;
+    margin: 1rem 0.5rem;
+  }
+
+  /* Better button sizing on mobile */
+  .control-btn,
+  .submit-btn,
+  .login-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* Responsive header */
+  .admin-header {
+    padding: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.3rem;
+  }
+
+  .header-content p {
+    font-size: 0.8rem;
+  }
+}
+
+/* Enhanced tablet responsiveness */
+@media (max-width: 768px) and (min-width: 481px) {
+  .admin-container {
+    padding: 0 1rem;
+  }
+
+  .logs-table {
+    font-size: 0.9rem;
+  }
+
+  .form-row {
+    gap: 0.75rem;
   }
 }
 

@@ -28,13 +28,19 @@ class AdminManager {
     };
     this.products = [];
     this.currentEditingProduct = null;
+    this.sessionCheckInterval = null;
+    this.sessionCleanupInterval = null;
+    this.supabaseClient = null;
+    this.realtimeChannel = null;
     this.init();
+    this.setupCrossTabAuth();
   }
 
   /**
    * Initialize the admin panel
    */
   init() {
+    this.setupSupabaseClient();
     this.setupEventListeners();
     this.setupFileUploads();
     this.checkAuthStatus();
@@ -46,15 +52,321 @@ class AdminManager {
   checkAuthStatus() {
     const token = localStorage.getItem('admin_token');
     const expiry = localStorage.getItem('admin_token_expiry');
+    const sessionExpiresAt = localStorage.getItem('admin_session_expires_at');
 
-    if (token && expiry && new Date().getTime() < parseInt(expiry)) {
+    // Use database session expiry if available, otherwise fall back to JWT expiry
+    const effectiveExpiry = sessionExpiresAt ? new Date(sessionExpiresAt).getTime() : parseInt(expiry);
+
+    if (token && effectiveExpiry && !isNaN(effectiveExpiry) && new Date().getTime() < effectiveExpiry) {
       this.isAuthenticated = true;
       this.showAdminPanel();
       this.loadProducts();
       this.loadAdminLogs();
+      this.startSessionMonitoring();
+      this.setupRealtimeSubscription();
     } else {
       this.clearAuthData();
       this.showLoginModal();
+    }
+  }
+
+  /**
+   * Start monitoring session expiry for auto-logout
+   */
+  startSessionMonitoring() {
+    // Clear any existing interval
+    if (this.sessionCheckInterval) {
+      clearInterval(this.sessionCheckInterval);
+    }
+
+    // Set up periodic cleanup of expired sessions (every 10 minutes)
+    if (this.sessionCleanupInterval) {
+      clearInterval(this.sessionCleanupInterval);
+    }
+    this.sessionCleanupInterval = setInterval(async () => {
+      try {
+        const response = await fetch(functionsUrl('admin-logs'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          },
+          body: JSON.stringify({
+            type: 'sessions',
+            action: 'cleanup_expired'
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.expired_sessions_marked > 0) {
+            console.log(`Cleaned up ${result.expired_sessions_marked} expired sessions`);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to cleanup expired sessions:', error);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+
+    // Check session more frequently (every 1 second) for immediate logout response
+    this.sessionCheckInterval = setInterval(async () => {
+      const token = localStorage.getItem('admin_token');
+      const expiry = localStorage.getItem('admin_token_expiry');
+      const sessionExpiresAt = localStorage.getItem('admin_session_expires_at');
+
+      // Robustly parse sessionExpiresAt (ISO string or timestamp)
+      let effectiveExpiry = null;
+      if (sessionExpiresAt) {
+        // Try to parse as ISO string or timestamp
+        const parsed = Date.parse(sessionExpiresAt);
+        if (!isNaN(parsed)) {
+          effectiveExpiry = parsed;
+        }
+      }
+      if (!effectiveExpiry && expiry) {
+        const parsed = parseInt(expiry);
+        if (!isNaN(parsed)) {
+          effectiveExpiry = parsed;
+        }
+      }
+
+      // Check effective expiry
+      if (!effectiveExpiry || isNaN(effectiveExpiry) || new Date().getTime() >= effectiveExpiry) {
+        console.log('Session expired based on effective expiry time');
+        this.handleSessionExpiry();
+        return;
+      }
+
+      // Validate token with server more frequently (every 30 seconds) for immediate response to DB changes
+      const lastValidated = localStorage.getItem('admin_token_last_validated');
+      const now = new Date().getTime();
+      const thirtySeconds = 30 * 1000;
+      
+      if (!lastValidated || (now - parseInt(lastValidated)) > thirtySeconds) {
+        try {
+          const response = await fetch(functionsUrl('admin-auth'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ action: 'validate' })
+          });
+
+          if (!response.ok) {
+            console.log('Server-side token validation failed');
+            this.handleSessionExpiry();
+            return;
+          }
+
+          // Update our stored expiry if the server provides updated information
+          const result = await response.json();
+          if (result.expiresAt) {
+            // Update both JWT expiry and session expiry to keep them in sync
+            localStorage.setItem('admin_token_expiry', result.expiresAt.toString());
+            localStorage.setItem('admin_session_expires_at', new Date(result.expiresAt).toISOString());
+          }
+
+          localStorage.setItem('admin_token_last_validated', now.toString());
+        } catch (error) {
+          console.warn('Failed to validate token with server:', error);
+          // Don't logout on network errors, just log the issue
+        }
+      }
+    }, 1000);
+  }
+
+  /**
+   * Handle session expiry by auto-logging out
+   */
+  async handleSessionExpiry() {
+    console.log('Session expired, logging out automatically');
+    
+    // Mark current session as inactive in database before clearing local data
+    try {
+      const sessionToken = localStorage.getItem('admin_session_token');
+      const sessionId = localStorage.getItem('admin_session_id');
+      
+      if (sessionToken || sessionId) {
+        // Make a quick call to mark session as inactive
+        await fetch(functionsUrl('admin-logs'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          },
+          body: JSON.stringify({
+            type: 'sessions',
+            action: 'mark_inactive',
+            session_token: sessionToken,
+            session_id: sessionId
+          })
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to mark session as inactive:', error);
+      // Continue with logout even if this fails
+    }
+    
+    this.clearAuthData();
+    this.isAuthenticated = false;
+    
+    // Clear the monitoring interval
+    if (this.sessionCheckInterval) {
+      clearInterval(this.sessionCheckInterval);
+      this.sessionCheckInterval = null;
+    }
+
+    // Clear the cleanup interval
+    if (this.sessionCleanupInterval) {
+      clearInterval(this.sessionCleanupInterval);
+      this.sessionCleanupInterval = null;
+    }
+
+    // Cleanup realtime subscription
+    this.cleanupRealtimeSubscription();
+
+    // Show login modal with expiry message
+    this.showLoginModal();
+    this.hideAdminPanel();
+    
+    // Show a notification about session expiry
+    this.showLoginError('Your session has expired. Please log in again.');
+  }
+
+  /**
+   * Setup Supabase client for realtime functionality
+   */
+  setupSupabaseClient() {
+    // Only set up if Supabase is available and we don't have a client yet
+    if (typeof window.supabase !== 'undefined' && !this.supabaseClient) {
+      this.supabaseClient = window.supabase;
+    }
+  }
+
+  /**
+   * Setup cross-tab authentication synchronization
+   */
+  setupCrossTabAuth() {
+    // Listen for localStorage changes to sync authentication across tabs
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'admin_token' || e.key === 'admin_token_expiry') {
+        // Token was changed in another tab
+        if (e.newValue === null) {
+          // Token was removed - logout
+          if (this.isAuthenticated) {
+            this.handleLogout();
+          }
+        } else {
+          // Token was added/updated - check if we should login
+          if (!this.isAuthenticated) {
+            this.checkAuthStatus();
+          }
+        }
+      }
+    });
+
+    // Also listen for custom events for immediate cross-tab sync
+    window.addEventListener('admin-logout', () => {
+      if (this.isAuthenticated) {
+        this.handleLogout();
+      }
+    });
+
+    window.addEventListener('admin-login', () => {
+      if (!this.isAuthenticated) {
+        this.checkAuthStatus();
+      }
+    });
+
+    // Use BroadcastChannel for better cross-tab communication if available
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('admin-auth');
+      channel.addEventListener('message', (e) => {
+        if (e.data.type === 'login' && !this.isAuthenticated) {
+          this.checkAuthStatus();
+        } else if (e.data.type === 'logout' && this.isAuthenticated) {
+          this.handleLogout();
+        }
+      });
+    }
+  }
+
+  /**
+   * Setup realtime subscription for admin sessions
+   */
+  setupRealtimeSubscription() {
+    // Don't set up realtime if no Supabase client is available
+    if (!this.supabaseClient || this.realtimeChannel) return;
+
+    try {
+      // Check if the supabase client has the channel method
+      if (typeof this.supabaseClient.channel !== 'function') {
+        // Silently skip realtime setup if not supported
+        return;
+      }
+
+      this.realtimeChannel = this.supabaseClient
+        .channel('admin_sessions_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'admin_sessions'
+          },
+          (payload) => {
+            console.log('Admin sessions table changed:', payload);
+            
+            // Check if this change affects the current user's session
+            const currentUsername = localStorage.getItem('admin_username');
+            if (currentUsername && payload.new) {
+              // If the session was updated and belongs to current user
+              if (payload.new.username === currentUsername) {
+                console.log('Current user session changed:', payload.new);
+                
+                // Check if session was marked inactive or expired
+                if (!payload.new.is_active || new Date(payload.new.expires_at) <= new Date()) {
+                  console.log('Current session marked as expired/inactive, logging out immediately');
+                  this.handleSessionExpiry();
+                  return;
+                }
+                
+                // Update local session expiry if it was changed
+                if (payload.new.expires_at) {
+                  const newExpiry = new Date(payload.new.expires_at).getTime();
+                  localStorage.setItem('admin_session_expires_at', payload.new.expires_at);
+                  localStorage.setItem('admin_token_expiry', newExpiry.toString());
+                  console.log('Updated session expiry to:', payload.new.expires_at);
+                }
+              }
+            }
+            
+            // Reload sessions table when any change occurs
+            this.loadAdminSessions();
+          }
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('Failed to setup realtime subscription:', error);
+    }
+  }
+
+  /**
+   * Cleanup realtime subscription
+   */
+  cleanupRealtimeSubscription() {
+    if (this.realtimeChannel && this.supabaseClient) {
+      try {
+        if (typeof this.supabaseClient.removeChannel === 'function') {
+          this.supabaseClient.removeChannel(this.realtimeChannel);
+        } else if (typeof this.realtimeChannel.unsubscribe === 'function') {
+          this.realtimeChannel.unsubscribe();
+        }
+      } catch (error) {
+        console.warn('Failed to cleanup realtime subscription:', error);
+      }
+      this.realtimeChannel = null;
     }
   }
 
@@ -198,14 +510,34 @@ class AdminManager {
         throw new Error(result.error || 'Authentication failed');
       }
 
-      // Store auth data
-      const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours
+      // Store auth data - use server-provided session expiry or fallback to 1 hour
+      let expiryTime;
+      if (result.sessionExpiresAt) {
+        // Use the actual session expiry from the server
+        expiryTime = new Date(result.sessionExpiresAt).getTime();
+      } else {
+        // Fallback to 1 hour if no session expiry provided
+        expiryTime = new Date().getTime() + (1 * 60 * 60 * 1000);
+      }
+      
       localStorage.setItem('admin_token', result.token);
       localStorage.setItem('admin_token_expiry', expiryTime.toString());
+      localStorage.setItem('admin_username', credentials.username);
 
       this.isAuthenticated = true;
 
       try { window.dispatchEvent(new CustomEvent('admin-auth-success', { detail: { username: credentials.username } })); } catch(_) {}
+      
+      // Notify other tabs about login
+      try { 
+        window.dispatchEvent(new CustomEvent('admin-login')); 
+        // Also use BroadcastChannel for better cross-tab communication
+        if (typeof BroadcastChannel !== 'undefined') {
+          const channel = new BroadcastChannel('admin-auth');
+          channel.postMessage({ type: 'login', username: credentials.username });
+          channel.close();
+        }
+      } catch(_) {}
 
       // Store session info if provided
       if (result.sessionToken) localStorage.setItem('admin_session_token', result.sessionToken);
@@ -218,6 +550,8 @@ class AdminManager {
         this.showAdminPanel();
         this.loadProducts();
         this.loadAdminLogs();
+        this.startSessionMonitoring();
+        this.setupRealtimeSubscription();
       }, 500);
 
     } catch (error) {
@@ -238,6 +572,33 @@ class AdminManager {
   handleLogout() {
     this.clearAuthData();
     this.isAuthenticated = false;
+    
+    // Notify other tabs about logout
+    try { 
+      window.dispatchEvent(new CustomEvent('admin-logout')); 
+      // Also use BroadcastChannel for better cross-tab communication
+      if (typeof BroadcastChannel !== 'undefined') {
+        const channel = new BroadcastChannel('admin-auth');
+        channel.postMessage({ type: 'logout' });
+        channel.close();
+      }
+    } catch(_) {}
+    
+    // Clear session monitoring
+    if (this.sessionCheckInterval) {
+      clearInterval(this.sessionCheckInterval);
+      this.sessionCheckInterval = null;
+    }
+    
+    // Clear the cleanup interval
+    if (this.sessionCleanupInterval) {
+      clearInterval(this.sessionCleanupInterval);
+      this.sessionCleanupInterval = null;
+    }
+    
+    // Cleanup realtime subscription
+    this.cleanupRealtimeSubscription();
+    
     this.resetForm();
     this.showLoginModal();
     this.hideAdminPanel();
@@ -249,6 +610,11 @@ class AdminManager {
   clearAuthData() {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_token_expiry');
+    localStorage.removeItem('admin_session_token');
+    localStorage.removeItem('admin_session_id');
+    localStorage.removeItem('admin_session_expires_at');
+    localStorage.removeItem('admin_token_last_validated');
+    localStorage.removeItem('admin_username');
   }
 
   /**
@@ -1154,11 +1520,13 @@ class AdminManager {
         </div>
         
         <div class="product-manage-actions">
-          <button class="product-edit-btn" onclick="adminManager.editProduct(${product.id})">
-            <i class="fas fa-edit"></i> Edit
+          <button class="product-edit-btn control-btn" onclick="adminManager.editProduct(${product.id})">
+            <span class="btn-text"><i class="fas fa-edit"></i> Edit</span>
+            <span class="btn-spinner" style="display: none;"><div class="spinner-circle"></div></span>
           </button>
-          <button class="product-delete-btn" onclick="adminManager.confirmDeleteProduct(${product.id}, '${this.escapeHtml(product.name)}')">
-            <i class="fas fa-trash"></i> Delete
+          <button class="product-delete-btn control-btn" onclick="adminManager.confirmDeleteProduct(${product.id}, '${this.escapeHtml(product.name)}')">
+            <span class="btn-text"><i class="fas fa-trash"></i> Delete</span>
+            <span class="btn-spinner" style="display: none;"><div class="spinner-circle"></div></span>
           </button>
         </div>
       `;
@@ -1183,8 +1551,22 @@ class AdminManager {
 
       if (targetButton) {
         originalContent = targetButton.innerHTML;
-        targetButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        targetButton.classList.add('loading');
         targetButton.disabled = true;
+        
+        // Ensure spinner structure exists
+        if (!targetButton.querySelector('.btn-spinner')) {
+          targetButton.innerHTML = `
+            <span class="btn-text"><i class="fas fa-edit"></i> Edit</span>
+            <span class="btn-spinner" style="display: none;"><div class="spinner-circle"></div></span>
+          `;
+        }
+        
+        // Show spinner, hide text
+        const btnText = targetButton.querySelector('.btn-text');
+        const btnSpinner = targetButton.querySelector('.btn-spinner');
+        if (btnText) btnText.style.display = 'none';
+        if (btnSpinner) btnSpinner.style.display = 'flex';
       }
 
       // Fetch product data
@@ -1239,8 +1621,20 @@ class AdminManager {
     } finally {
       // Always reset button state
       if (targetButton) {
-        targetButton.innerHTML = originalContent || '<i class="fas fa-edit"></i> Edit';
+        targetButton.classList.remove('loading');
         targetButton.disabled = false;
+        
+        // Reset to proper button structure if needed
+        const btnText = targetButton.querySelector('.btn-text');
+        const btnSpinner = targetButton.querySelector('.btn-spinner');
+        
+        if (btnText && btnSpinner) {
+          btnText.style.display = 'flex';
+          btnSpinner.style.display = 'none';
+        } else {
+          // Fallback: restore original content
+          targetButton.innerHTML = originalContent || '<i class="fas fa-edit"></i> Edit';
+        }
 
         // Force a brief delay to ensure the UI update is visible
         setTimeout(() => {
@@ -1316,8 +1710,9 @@ class AdminManager {
             <button class="delete-cancel-btn" onclick="adminManager.hideDeleteConfirmation()">
               <i class="fas fa-times"></i> Cancel
             </button>
-            <button class="delete-confirm-btn" id="confirm-delete-btn">
-              <i class="fas fa-trash"></i> Delete
+            <button class="delete-confirm-btn control-btn" id="confirm-delete-btn">
+              <span class="btn-text"><i class="fas fa-trash"></i> Delete</span>
+              <span class="btn-spinner" style="display: none;"><div class="spinner-circle"></div></span>
             </button>
           </div>
         </div>
@@ -1353,12 +1748,17 @@ class AdminManager {
    */
   async deleteProduct(productId) {
     const confirmBtn = document.getElementById('confirm-delete-btn');
-    const originalContent = confirmBtn.innerHTML;
     
     try {
       // Show loading state
       confirmBtn.disabled = true;
-      confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+      confirmBtn.classList.add('loading');
+      
+      // Show spinner, hide text
+      const btnText = confirmBtn.querySelector('.btn-text');
+      const btnSpinner = confirmBtn.querySelector('.btn-spinner');
+      if (btnText) btnText.style.display = 'none';
+      if (btnSpinner) btnSpinner.style.display = 'flex';
       
       const response = await fetch(`${functionsUrl('manage-products')}?product_id=${productId}`, {
         method: 'DELETE',
@@ -1389,7 +1789,16 @@ class AdminManager {
     } finally {
       // Reset button state
       confirmBtn.disabled = false;
-      confirmBtn.innerHTML = originalContent;
+      confirmBtn.classList.remove('loading');
+      
+      // Reset to proper button structure
+      const btnText = confirmBtn.querySelector('.btn-text');
+      const btnSpinner = confirmBtn.querySelector('.btn-spinner');
+      
+      if (btnText && btnSpinner) {
+        btnText.style.display = 'flex';
+        btnSpinner.style.display = 'none';
+      }
     }
   }
 
@@ -2067,7 +2476,7 @@ class AdminManager {
             <img src="${this.escapeHtml(r.image_url || '')}" alt="review" style="width:40px;height:40px;border-radius:6px;object-fit:cover;background:#e2e8f0;" />
             <button class="control-btn change-image-btn">
               <span class="btn-text"><i class="fas fa-image"></i> Change</span>
-              <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+              <span class="btn-spinner"><div class="spinner-circle"></div></span>
             </button>
             <input type="file" accept="image/*" class="hidden-file-input" style="display:none" />
           </div>
@@ -2081,7 +2490,7 @@ class AdminManager {
         <td>
           <button class="control-btn edit-text-btn">
             <span class="btn-text"><i class="fas fa-pen"></i> Edit</span>
-            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            <span class="btn-spinner"><div class="spinner-circle"></div></span>
           </button>
         </td>
         <td>
@@ -2093,7 +2502,7 @@ class AdminManager {
         <td>
           <button class="control-btn save-review-btn">
             <span class="btn-text"><i class="fas fa-save"></i> Save</span>
-            <span class="btn-spinner"><i class="fas fa-spinner fa-spin"></i></span>
+            <span class="btn-spinner"><div class="spinner-circle"></div></span>
           </button>
         </td>
       </tr>

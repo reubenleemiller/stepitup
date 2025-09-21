@@ -118,6 +118,14 @@
       const text = this.deleteConfirm.querySelector('.btn-text');
       const spin = this.deleteConfirm.querySelector('.btn-spinner');
       this.deleteConfirm.disabled = loading;
+      
+      // Add/remove loading class for CSS styling
+      if(loading) {
+        this.deleteConfirm.classList.add('loading');
+      } else {
+        this.deleteConfirm.classList.remove('loading');
+      }
+      
       if(text) text.style.display = loading ? 'none' : 'inline-flex';
       if(spin) spin.style.display = loading ? 'inline-flex' : 'none';
     }
