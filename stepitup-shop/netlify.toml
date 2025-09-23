@@ -1,15 +1,15 @@
-[[functions]]
-  function = "cleanup-expired-sessions"
-  schedule = "0 * * * *"
-  generator = "edge"
-  included_files = ["netlify/edge-functions/cleanup-expired-sessions.js"]
 [build]
   command = ""
   functions = "netlify/functions"
   publish = "."
 
+
 [functions]
   directory = "netlify/functions"
+
+[[scheduled]]
+  path = "/.netlify/functions/cleanup-expired-sessions"
+  schedule = "0 * * * *"
 
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
