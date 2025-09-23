@@ -1,3 +1,8 @@
+[[functions]]
+  function = "cleanup-expired-sessions"
+  schedule = "0 * * * *"
+  generator = "edge"
+  included_files = ["netlify/edge-functions/cleanup-expired-sessions.js"]
 [build]
   command = ""
   functions = "netlify/functions"
@@ -8,5 +13,5 @@
 
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
-  SECRETS_SCAN_OMIT_VALUES = "dvsruqzfdzjyahknixmk.supabase.co"
+  SECRETS_SCAN_OMIT_VALUES = "https://dvsruqzfdzjyahknixmk.supabase.co"
 
