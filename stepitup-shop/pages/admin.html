@@ -1,3 +1,18 @@
+        <!-- Review Delete Confirmation Modal -->
+    <div id="review-delete-modal" class="delete-modal">
+            <div class="delete-modal-content">
+                <div class="delete-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3>Delete Review</h3>
+                <p id="review-delete-desc">Are you sure you want to delete this review?</p>
+                <div class="delete-modal-actions">
+                    <button class="delete-cancel-btn" id="review-delete-cancel"><i class="fas fa-times"></i> Cancel</button>
+                    <button class="delete-confirm-btn control-btn" id="review-delete-confirm">
+                        <span class="btn-text"><i class="fas fa-trash"></i> Delete</span>
+                        <span class="btn-spinner"><div class="spinner-circle"></div></span>
+                    </button>
+                </div>
+            </div>
+        </div>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,8 +26,40 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <!-- Session Expiry Countdown (always visible) -->
+    <div id="session-expiry-banner" class="session-expiry-banner" style="display:flex;align-items:center;gap:0.5rem;justify-content:center;background:#fffbe6;color:#b7791f;padding:0.5rem 1rem;font-size:1.1rem;">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Session expires in <span id="session-expiry-countdown">2:00</span></span>
+        </div>
+        <style>
+            .session-expiry-banner {
+                position: sticky;
+                top: 0;
+                z-index: 1000;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            }
+        </style>
+    </div>
     <!-- Login Modal -->
     <div id="login-modal" class="login-modal show">
+        <!-- Session Expiry Warning Modal -->
+        <div id="session-expiry-modal" class="session-expiry-modal" style="display:none;">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content warning">
+                <div class="warning-animation">
+                    <div class="warning-icon">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                </div>
+                <div class="modal-text">
+                    <h3>Session Expiring Soon</h3>
+                    <p>Your admin session will expire in <span id="session-expiry-countdown">2:00</span>.</p>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-btn primary" onclick="adminManager.hideSessionExpiryModal()">OK</button>
+                </div>
+            </div>
+        </div>
         <div class="login-backdrop">
             <div class="login-content">
                 <div class="login-header">
@@ -657,7 +704,7 @@
     <script src="../scripts/resources-manager.js"></script>
 
     <script>
-    // Enhanced form handling for edit mode
+    // Enhanced form handling for edit mode and ensure review delete modal logic is initialized after DOMContentLoaded
     document.addEventListener('DOMContentLoaded', function() {
         // Update UI when editing mode changes
         const observer = new MutationObserver(function(mutations) {
@@ -669,15 +716,12 @@
                     const productFileRequired = document.getElementById('product-file-required');
                     const productFileOptional = document.getElementById('product-file-optional');
                     const productFileInput = document.getElementById('product-file');
-                    
                     if (cancelBtn) {
                         cancelBtn.style.display = isEditing ? 'flex' : 'none';
                     }
-                    
                     if (editNote) {
                         editNote.style.display = isEditing ? 'block' : 'none';
                     }
-                    
                     // Make product file optional when editing
                     if (productFileRequired && productFileOptional && productFileInput) {
                         if (isEditing) {
@@ -693,12 +737,16 @@
                 }
             });
         });
-        
         observer.observe(document.body, {
             childList: true,
             subtree: true,
             characterData: true
         });
+
+        // Ensure review delete modal logic is initialized after DOMContentLoaded
+        if (window.adminManager && typeof adminManager.wireReviewsTableRowEvents === 'function') {
+            adminManager.wireReviewsTableRowEvents();
+        }
     });
     </script>
     <!-- Free Resources Delete Modal -->

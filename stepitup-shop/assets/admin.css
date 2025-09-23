@@ -1,3 +1,16 @@
+/* Make session expiry banner red when expiring */
+.session-expiry-banner.expiring {
+  background: #ffeaea !important;
+  color: #c53030 !important;
+  transition: background 0.2s, color 0.2s;
+}
+.reviews-action-col .control-btn {
+  min-width: 120px;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+  text-align: center;
+}
 /* Admin Panel Styles */
 
 /* Global Admin Styles */
@@ -1176,18 +1189,34 @@ body {
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 0.8rem 1.5rem;
+  padding: 0.7rem 1.2rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .control-btn:hover {
   background: #1e5bb3;
   transform: translateY(-1px);
+}
+
+/* Make save/delete review buttons in reviews table consistent and stacked with spacing */
+.reviews-action-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.logs-table td, .logs-table th {
+  vertical-align: middle !important;
+  text-align: center;
 }
 
 .search-box {

@@ -32,18 +32,115 @@ class AdminManager {
     this.sessionCleanupInterval = null;
     this.supabaseClient = null;
     this.realtimeChannel = null;
+    this.sessionExpiryWarningShown = false;
+    this.sessionExpiryWarningThreshold = 2 * 60 * 1000; // 2 minutes
+    this.sessionExpiryCountdownInterval = null;
+    this.sessionExpiryBannerInterval = null;
+    this.sessionExpiryPollInterval = null;
+
+    // Try auto-login from storage synchronously for initial tab load
+    if (!this.tryAutoLoginFromStorageSync()) {
+      // If not logged in, show login modal after DOMContentLoaded
+      document.addEventListener('DOMContentLoaded', () => {
+        this.showLoginModal();
+      });
+    }
+
     this.init();
     this.setupCrossTabAuth();
+  }
+
+  // Synchronous version for initial check (no server fetch)
+  tryAutoLoginFromStorageSync() {
+    if (this.isAuthenticated) return true;
+    const token = localStorage.getItem('admin_token');
+    const expiry = localStorage.getItem('admin_token_expiry');
+    const sessionExpiresAt = localStorage.getItem('admin_session_expires_at');
+    const now = Date.now();
+    let effectiveExpiry = null;
+    if (sessionExpiresAt) {
+      effectiveExpiry = Date.parse(sessionExpiresAt);
+    } else if (expiry) {
+      effectiveExpiry = parseInt(expiry, 10);
+    }
+    if (token && effectiveExpiry && now < effectiveExpiry) {
+      this.isAuthenticated = true;
+      // Hide login modal, show admin panel
+      const loginModal = document.getElementById('login-modal');
+      const adminPanel = document.querySelector('.admin-panel');
+      if (loginModal) loginModal.classList.remove('show');
+      if (adminPanel) adminPanel.classList.add('show');
+      this.startSessionExpiryBanner();
+      return true;
+    }
+    return false;
+  }
+
+  async tryAutoLoginFromStorage() {
+    // Only run if not already authenticated
+    if (this.isAuthenticated) return;
+    const token = localStorage.getItem('admin_token');
+    const expiry = localStorage.getItem('admin_token_expiry');
+    const sessionExpiresAt = localStorage.getItem('admin_session_expires_at');
+    const now = Date.now();
+    let effectiveExpiry = null;
+    if (sessionExpiresAt) {
+      effectiveExpiry = Date.parse(sessionExpiresAt);
+    } else if (expiry) {
+      effectiveExpiry = parseInt(expiry, 10);
+    }
+    if (token && effectiveExpiry && now < effectiveExpiry) {
+      // Valid session exists, but ensure expiry is up-to-date before showing UI
+      await this.fetchAndSetSessionExpiry();
+      this.isAuthenticated = true;
+      // Hide login modal, show admin panel
+      const loginModal = document.getElementById('login-modal');
+      const adminPanel = document.querySelector('.admin-panel');
+      if (loginModal) loginModal.classList.remove('show');
+      if (adminPanel) adminPanel.classList.add('show');
+      // Show the session expiry countdown banner with correct value
+      this.startSessionExpiryBanner();
+      // Optionally, you can call checkAuthStatus() to re-validate
+      this.checkAuthStatus();
+    }
+  }
+
+  /**
+   * Fetch the latest session expiry from the server and update localStorage
+   */
+  async fetchAndSetSessionExpiry() {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const sessionToken = localStorage.getItem('admin_session_token');
+      if (!token || !sessionToken) return;
+      const res = await fetch(functionsUrl('admin-logs') + '?type=sessions&_ts=' + Date.now(), {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json && Array.isArray(json.sessions || json.sessions?.sessions)) {
+        const sessions = json.sessions || json.sessions.sessions;
+        const current = sessions.find(s => s.session_token === sessionToken);
+        if (current && current.expires_at) {
+          const newExpiry = new Date(current.expires_at).toISOString();
+          localStorage.setItem('admin_session_expires_at', newExpiry);
+          localStorage.setItem('admin_token_expiry', Date.parse(newExpiry).toString());
+        }
+      }
+    } catch (e) {}
   }
 
   /**
    * Initialize the admin panel
    */
   init() {
-    this.setupSupabaseClient();
-    this.setupEventListeners();
-    this.setupFileUploads();
-    this.checkAuthStatus();
+  this.setupSupabaseClient();
+  this.setupEventListeners();
+  this.setupFileUploads();
+  this.checkAuthStatus();
+  this.startSessionExpiryBanner();
+  this.startSessionExpiryPolling();
   }
 
   /**
@@ -64,9 +161,100 @@ class AdminManager {
       this.loadAdminLogs();
       this.startSessionMonitoring();
       this.setupRealtimeSubscription();
+      this.startSessionExpiryBanner();
     } else {
       this.clearAuthData();
       this.showLoginModal();
+      this.stopSessionExpiryBanner();
+    }
+  }
+
+  /**
+   * Start always-visible session expiry countdown banner
+   */
+  startSessionExpiryBanner() {
+    this.stopSessionExpiryBanner();
+    const banner = document.getElementById('session-expiry-banner');
+    const countdown = document.getElementById('session-expiry-countdown');
+    if (!banner || !countdown) return;
+    banner.style.display = 'flex';
+    // Show instantly
+    const updateCountdown = () => {
+      const expiry = localStorage.getItem('admin_token_expiry');
+      const sessionExpiresAt = localStorage.getItem('admin_session_expires_at');
+      let effectiveExpiry = null;
+      if (sessionExpiresAt) {
+        const parsed = Date.parse(sessionExpiresAt);
+        if (!isNaN(parsed)) effectiveExpiry = parsed;
+      }
+      if (!effectiveExpiry && expiry) {
+        const parsed = parseInt(expiry);
+        if (!isNaN(parsed)) effectiveExpiry = parsed;
+      }
+      if (!effectiveExpiry || isNaN(effectiveExpiry)) {
+        countdown.textContent = '--:--';
+        banner.classList.remove('expiring');
+        return;
+      }
+      const now = new Date().getTime();
+      let timeLeft = Math.max(0, effectiveExpiry - now);
+      let min = Math.floor(timeLeft / 60000);
+      let sec = Math.floor((timeLeft % 60000) / 1000);
+      countdown.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+      if (timeLeft <= 10000) {
+        banner.classList.add('expiring');
+      } else {
+        banner.classList.remove('expiring');
+      }
+    };
+    updateCountdown();
+    this.sessionExpiryBannerInterval = setInterval(updateCountdown, 1000);
+  }
+
+  stopSessionExpiryBanner() {
+    if (this.sessionExpiryBannerInterval) {
+      clearInterval(this.sessionExpiryBannerInterval);
+      this.sessionExpiryBannerInterval = null;
+    }
+    const banner = document.getElementById('session-expiry-banner');
+    if (banner) banner.style.display = 'none';
+  }
+
+  /**
+   * Poll Supabase for session expiry and update localStorage if changed
+   */
+  startSessionExpiryPolling() {
+    this.stopSessionExpiryPolling();
+    this.sessionExpiryPollInterval = setInterval(async () => {
+      try {
+        const token = localStorage.getItem('admin_token');
+        const sessionToken = localStorage.getItem('admin_session_token');
+        if (!token || !sessionToken) return;
+        // Fetch all sessions and find the current one
+        const res = await fetch(functionsUrl('admin-logs') + '?type=sessions&_ts=' + Date.now(), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          cache: 'no-store'
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json && Array.isArray(json.sessions || json.sessions?.sessions)) {
+          const sessions = json.sessions || json.sessions.sessions;
+          const current = sessions.find(s => s.session_token === sessionToken);
+          if (current && current.expires_at) {
+            const newExpiry = new Date(current.expires_at).toISOString();
+            if (localStorage.getItem('admin_session_expires_at') !== newExpiry) {
+              localStorage.setItem('admin_session_expires_at', newExpiry);
+            }
+          }
+        }
+      } catch (e) {}
+    }, 10000); // every 10 seconds
+  }
+
+  stopSessionExpiryPolling() {
+    if (this.sessionExpiryPollInterval) {
+      clearInterval(this.sessionExpiryPollInterval);
+      this.sessionExpiryPollInterval = null;
     }
   }
 
@@ -77,6 +265,12 @@ class AdminManager {
     // Clear any existing interval
     if (this.sessionCheckInterval) {
       clearInterval(this.sessionCheckInterval);
+    }
+
+    // Clear any existing countdown interval
+    if (this.sessionExpiryCountdownInterval) {
+      clearInterval(this.sessionExpiryCountdownInterval);
+      this.sessionExpiryCountdownInterval = null;
     }
 
     // Set up periodic cleanup of expired sessions (every 10 minutes)
@@ -137,14 +331,22 @@ class AdminManager {
         return;
       }
 
+
+      // Show countdown warning if within threshold
+      const timeLeft = effectiveExpiry - new Date().getTime();
+      if (timeLeft <= this.sessionExpiryWarningThreshold && !this.sessionExpiryWarningShown) {
+        this.showSessionExpiryModal(timeLeft);
+      } else if (timeLeft > this.sessionExpiryWarningThreshold && this.sessionExpiryWarningShown) {
+        this.hideSessionExpiryModal();
+      }
+
       // Validate token with server more frequently (every 30 seconds) for immediate response to DB changes
-      const lastValidated = localStorage.getItem('admin_token_last_validated');
-      const now = new Date().getTime();
-      const thirtySeconds = 30 * 1000;
-      
+      var lastValidated = localStorage.getItem('admin_token_last_validated');
+      var now = new Date().getTime();
+      var thirtySeconds = 30 * 1000;
       if (!lastValidated || (now - parseInt(lastValidated)) > thirtySeconds) {
         try {
-          const response = await fetch(functionsUrl('admin-auth'), {
+          var response = await fetch(functionsUrl('admin-auth'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -160,7 +362,7 @@ class AdminManager {
           }
 
           // Update our stored expiry if the server provides updated information
-          const result = await response.json();
+          var result = await response.json();
           if (result.expiresAt) {
             // Update both JWT expiry and session expiry to keep them in sync
             localStorage.setItem('admin_token_expiry', result.expiresAt.toString());
@@ -177,10 +379,63 @@ class AdminManager {
   }
 
   /**
+   * Show session expiry warning modal and start countdown
+   */
+  showSessionExpiryModal(timeLeftMs) {
+    const modal = document.getElementById('session-expiry-modal');
+    const countdown = document.getElementById('session-expiry-countdown');
+    if (!modal || !countdown) return;
+    modal.style.display = 'flex';
+    this.sessionExpiryWarningShown = true;
+
+    // Update countdown every second
+    const updateCountdown = () => {
+      const expiry = localStorage.getItem('admin_session_expires_at') || localStorage.getItem('admin_token_expiry');
+      let effectiveExpiry = null;
+      if (expiry) {
+        const parsed = Date.parse(expiry);
+        if (!isNaN(parsed)) {
+          effectiveExpiry = parsed;
+        } else {
+          const parsedInt = parseInt(expiry);
+          if (!isNaN(parsedInt)) effectiveExpiry = parsedInt;
+        }
+      }
+      const now = new Date().getTime();
+      let msLeft = effectiveExpiry ? effectiveExpiry - now : 0;
+      if (msLeft < 0) msLeft = 0;
+      const min = Math.floor(msLeft / 60000);
+      const sec = Math.floor((msLeft % 60000) / 1000);
+      countdown.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+      if (msLeft <= 0) {
+        this.hideSessionExpiryModal();
+      }
+    };
+    updateCountdown();
+    this.sessionExpiryCountdownInterval = setInterval(updateCountdown, 1000);
+  }
+
+  /**
+   * Hide session expiry warning modal and stop countdown
+   */
+  hideSessionExpiryModal() {
+    const modal = document.getElementById('session-expiry-modal');
+    if (modal) modal.style.display = 'none';
+    this.sessionExpiryWarningShown = false;
+    if (this.sessionExpiryCountdownInterval) {
+      clearInterval(this.sessionExpiryCountdownInterval);
+      this.sessionExpiryCountdownInterval = null;
+    }
+  }
+
+  /**
    * Handle session expiry by auto-logging out
    */
   async handleSessionExpiry() {
     console.log('Session expired, logging out automatically');
+
+              // Hide expiry modal if showing
+              this.hideSessionExpiryModal();
     
     // Mark current session as inactive in database before clearing local data
     try {
@@ -250,7 +505,7 @@ class AdminManager {
   setupCrossTabAuth() {
     // Listen for localStorage changes to sync authentication across tabs
     window.addEventListener('storage', (e) => {
-      if (e.key === 'admin_token' || e.key === 'admin_token_expiry') {
+      if (e.key === 'admin_token' || e.key === 'admin_token_expiry' || e.key === 'admin_session_expires_at') {
         // Token was changed in another tab
         if (e.newValue === null) {
           // Token was removed - logout
@@ -258,10 +513,8 @@ class AdminManager {
             this.handleLogout();
           }
         } else {
-          // Token was added/updated - check if we should login
-          if (!this.isAuthenticated) {
-            this.checkAuthStatus();
-          }
+          // Token was added/updated - always try auto-login
+          (async () => { await this.tryAutoLoginFromStorage(); })();
         }
       }
     });
@@ -274,17 +527,15 @@ class AdminManager {
     });
 
     window.addEventListener('admin-login', () => {
-      if (!this.isAuthenticated) {
-        this.checkAuthStatus();
-      }
+      (async () => { await this.tryAutoLoginFromStorage(); })();
     });
 
     // Use BroadcastChannel for better cross-tab communication if available
     if (typeof BroadcastChannel !== 'undefined') {
       const channel = new BroadcastChannel('admin-auth');
       channel.addEventListener('message', (e) => {
-        if (e.data.type === 'login' && !this.isAuthenticated) {
-          this.checkAuthStatus();
+        if (e.data.type === 'login') {
+          (async () => { await this.tryAutoLoginFromStorage(); })();
         } else if (e.data.type === 'logout' && this.isAuthenticated) {
           this.handleLogout();
         }
@@ -547,6 +798,7 @@ class AdminManager {
       // Success animation and transition
       setTimeout(() => {
         this.hideLoginModal();
+        this.startSessionExpiryBanner();
         this.showAdminPanel();
         this.loadProducts();
         this.loadAdminLogs();
@@ -572,6 +824,9 @@ class AdminManager {
   handleLogout() {
     this.clearAuthData();
     this.isAuthenticated = false;
+
+    // Hide expiry modal if showing
+    this.hideSessionExpiryModal();
     
     // Notify other tabs about logout
     try { 
@@ -615,6 +870,9 @@ class AdminManager {
     localStorage.removeItem('admin_session_expires_at');
     localStorage.removeItem('admin_token_last_validated');
     localStorage.removeItem('admin_username');
+
+    // Hide expiry modal if showing
+    this.hideSessionExpiryModal();
   }
 
   /**
@@ -2499,9 +2757,13 @@ class AdminManager {
             <label class="checkbox-label"><input type="checkbox" class="verified-toggle" ${r.verified ? 'checked' : ''}><span class="checkbox-custom"></span> Verified</label>
           </div>
         </td>
-        <td>
+        <td class="reviews-action-col">
           <button class="control-btn save-review-btn">
             <span class="btn-text"><i class="fas fa-save"></i> Save</span>
+            <span class="btn-spinner"><div class="spinner-circle"></div></span>
+          </button>
+          <button class="control-btn delete-review-btn" style="background:#e53e3e;color:#fff;">
+            <span class="btn-text"><i class="fas fa-trash"></i> Delete</span>
             <span class="btn-spinner"><div class="spinner-circle"></div></span>
           </button>
         </td>
@@ -2510,7 +2772,7 @@ class AdminManager {
     const totalPages = Math.max(1, Math.ceil(rows.length / this._reviewsPageSize));
     if (info) info.textContent = `Page ${this._reviewsPageIndex + 1} of ${totalPages}`;
 
-    this.wireReviewsTableRowEvents();
+  setTimeout(() => this.wireReviewsTableRowEvents(), 0);
   }
 
   setupReviewsPagination() {
@@ -2528,6 +2790,19 @@ class AdminManager {
 
   wireReviewsTableRowEvents() {
     const tbody = document.getElementById('reviews-tbody');
+
+    // Fallback: global event delegation for delete review button
+    document.removeEventListener('click', this._globalDeleteReviewHandler, true);
+    this._globalDeleteReviewHandler = (e) => {
+      const btn = e.target.closest('.delete-review-btn');
+      if (btn && btn.closest('tbody') && btn.closest('tbody').id === 'reviews-tbody') {
+        e.preventDefault();
+        const tr = btn.closest('tr');
+        const id = tr && tr.getAttribute('data-review-id');
+        if (id) this.showReviewDeleteModal(id, btn);
+      }
+    };
+    document.addEventListener('click', this._globalDeleteReviewHandler, true);
 
     tbody.querySelectorAll('.change-image-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -2628,6 +2903,69 @@ class AdminManager {
         this.openReviewEditor({ id, name, review, rating });
       });
     });
+
+    // Wire up delete review button
+    tbody.querySelectorAll('.delete-review-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tr = e.currentTarget.closest('tr');
+        const id = tr.getAttribute('data-review-id');
+        if (!id) return;
+        this.showReviewDeleteModal(id, btn);
+      });
+    });
+
+    // Modal logic
+    const modal = document.getElementById('review-delete-modal');
+    const cancelBtn = document.getElementById('review-delete-cancel');
+    const confirmBtn = document.getElementById('review-delete-confirm');
+    let pendingDeleteId = null;
+    let pendingDeleteBtn = null;
+    this.showReviewDeleteModal = (id, btn) => {
+      pendingDeleteId = id;
+      pendingDeleteBtn = btn;
+      if (modal) modal.classList.add('show');
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('loading');
+      }
+    };
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        if (modal) modal.classList.remove('show');
+        pendingDeleteId = null;
+        pendingDeleteBtn = null;
+      };
+    }
+    if (confirmBtn) {
+      confirmBtn.onclick = async () => {
+        if (!pendingDeleteId) return;
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('loading');
+        if (pendingDeleteBtn) pendingDeleteBtn.disabled = true;
+        try {
+          const res = await fetch(functionsUrl('admin-reviews'), {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: pendingDeleteId })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to delete review');
+          if (modal) modal.classList.remove('show');
+          await this.loadAdminReviews();
+        } catch (err) {
+          alert('Delete failed: ' + (err.message || err));
+        } finally {
+          confirmBtn.disabled = false;
+          confirmBtn.classList.remove('loading');
+          if (pendingDeleteBtn) pendingDeleteBtn.disabled = false;
+          pendingDeleteId = null;
+          pendingDeleteBtn = null;
+        }
+      };
+    }
   }
 
   openReviewEditor(review) {
@@ -2755,6 +3093,14 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('beforeunload', () => {
   // Keep auth data for page refreshes but clear on actual close
   // This is a basic approach - in production you might want more sophisticated session management
+});
+
+
+// Ensure tryAutoLoginFromStorage is called as async on DOMContentLoaded (for hot reloads or direct script load)
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.adminManager && typeof adminManager.tryAutoLoginFromStorage === 'function') {
+    await adminManager.tryAutoLoginFromStorage();
+  }
 });
 
 // Export for testing if needed

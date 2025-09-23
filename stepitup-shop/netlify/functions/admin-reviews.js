@@ -27,7 +27,7 @@ function extractClientIp(headers = {}) {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS'
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
 exports.handler = async (event) => {
@@ -44,6 +44,75 @@ exports.handler = async (event) => {
   }
 
   try {
+
+    if (event.httpMethod === 'DELETE') {
+      const body = JSON.parse(event.body || '{}');
+      const { id } = body;
+      if (!id) return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'id is required' }) };
+
+      // Delete associated review images from storage
+      try {
+        const { data: files, error: listErr } = await supabase.storage
+          .from('review-images')
+          .list(`review-images/${id}`, { limit: 1000 });
+        if (listErr) {
+          console.warn('Failed to list review images for delete:', listErr);
+        } else if (files && files.length > 0) {
+          const toDelete = files.filter(f => f.name && !f.name.includes('.folder')).map(f => `review-images/${id}/${f.name}`);
+          if (toDelete.length) {
+            const { error: delErr } = await supabase.storage.from('review-images').remove(toDelete);
+            if (delErr) console.warn('Failed to delete review images:', delErr);
+          }
+        }
+      } catch (e) {
+        console.warn('Error deleting review images:', e);
+      }
+
+      // Delete review
+      const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        console.error('Delete review error:', error);
+        return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Failed to delete review' }) };
+      }
+
+      // Log activity
+      try {
+        const clientIP = extractClientIp(event.headers);
+        const userAgent = (event.headers && (event.headers['user-agent'] || event.headers['User-Agent'])) || null;
+        let logErr = null;
+        try {
+          await supabase.from('admin_activity_log').insert({
+            username: data?.username || 'admin',
+            action: 'delete_review',
+            resource_type: 'review',
+            resource_id: id,
+            details: {},
+            ip_address: clientIP,
+            user_agent: userAgent
+          });
+        } catch (e) { logErr = e; }
+        if (logErr && logErr.code === '22P02') {
+          await supabase.from('admin_activity_log').insert({
+            username: data?.username || 'admin',
+            action: 'delete_review',
+            resource_type: 'review',
+            resource_id: id,
+            details: {},
+            ip_address: null,
+            user_agent: userAgent
+          });
+        } else if (logErr) {
+          console.warn('Failed to log delete_review:', logErr);
+        }
+      } catch (logErrOuter) {
+        console.warn('Failed to log delete_review (outer):', logErrOuter);
+      }
+
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) };
+    }
     if (event.httpMethod === 'GET') {
       const url = new URL(event.rawUrl || `${process.env.URL || 'http://localhost'}${event.path.startsWith('/') ? '' : '/'}${event.path}`);
       const limit = Math.min(parseInt(url.searchParams.get('limit') || '100', 10), 500);
